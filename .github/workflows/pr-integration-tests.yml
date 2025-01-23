@@ -98,14 +98,14 @@ jobs:
           REQUIRE_EMAIL_VERIFICATION=false \
           DISABLE_TELEMETRY=true \
           IMAGE_TAG=test \
-          docker compose -f docker-compose.dev.yml -p danswer-stack up -d
+          docker compose -f docker-compose.dev.yml -p onyx-stack up -d
         id: start_docker_multi_tenant
 
       # In practice, `cloud` Auth type would require OAUTH credentials to be set.
       - name: Run Multi-Tenant Integration Tests
         run: |
           echo "Running integration tests..."
-          docker run --rm --network danswer-stack_default \
+          docker run --rm --network onyx-stack_default \
             --name test-runner \
             -e POSTGRES_HOST=relational_db \
             -e POSTGRES_USER=postgres \
@@ -136,7 +136,7 @@ jobs:
       - name: Stop multi-tenant Docker containers
         run: |
           cd deployment/docker_compose
-          docker compose -f docker-compose.dev.yml -p danswer-stack down -v
+          docker compose -f docker-compose.dev.yml -p onyx-stack down -v
 
       - name: Start Docker containers
         run: |
@@ -146,14 +146,14 @@ jobs:
           REQUIRE_EMAIL_VERIFICATION=false \
           DISABLE_TELEMETRY=true \
           IMAGE_TAG=test \
-          docker compose -f docker-compose.dev.yml -p danswer-stack up -d
+          docker compose -f docker-compose.dev.yml -p onyx-stack up -d
         id: start_docker
 
       - name: Wait for service to be ready
         run: |
           echo "Starting wait-for-service script..."
 
-          docker logs -f danswer-stack-api_server-1 &
+          docker logs -f onyx-stack-api_server-1 &
 
           start_time=$(date +%s)
           timeout=300  # 5 minutes in seconds
@@ -183,10 +183,16 @@ jobs:
           done
           echo "Finished waiting for service."
 
+      - name: Start Mock Services
+        run: |
+          cd backend/tests/integration/mock_services
+          docker compose -f docker-compose.mock-it-services.yml \
+            -p mock-it-services-stack up -d
+
       - name: Run Standard Integration Tests
         run: |
           echo "Running integration tests..."
-          docker run --rm --network danswer-stack_default \
+          docker run --rm --network onyx-stack_default \
             --name test-runner \
             -e POSTGRES_HOST=relational_db \
             -e POSTGRES_USER=postgres \
@@ -201,6 +207,8 @@ jobs:
             -e CONFLUENCE_USER_NAME=${CONFLUENCE_USER_NAME} \
             -e CONFLUENCE_ACCESS_TOKEN=${CONFLUENCE_ACCESS_TOKEN} \
             -e TEST_WEB_HOSTNAME=test-runner \
+            -e MOCK_CONNECTOR_SERVER_HOST=mock_connector_server \
+            -e MOCK_CONNECTOR_SERVER_PORT=8001 \
             onyxdotapp/onyx-integration:test \
             /app/tests/integration/tests \
             /app/tests/integration/connector_job_tests
@@ -221,13 +229,13 @@ jobs:
         if: success() || failure()
         run: |
           cd deployment/docker_compose
-          docker compose -f docker-compose.dev.yml -p danswer-stack logs > docker-compose.log
+          docker compose -f docker-compose.dev.yml -p onyx-stack logs > docker-compose.log
           mv docker-compose.log ${{ github.workspace }}/docker-compose.log
 
       - name: Stop Docker containers
         run: |
           cd deployment/docker_compose
-          docker compose -f docker-compose.dev.yml -p danswer-stack down -v
+          docker compose -f docker-compose.dev.yml -p onyx-stack down -v
 
       - name: Upload logs
         if: success() || failure()
@@ -239,4 +247,4 @@ jobs:
       - name: Stop Docker containers
         run: |
           cd deployment/docker_compose
-          docker compose -f docker-compose.dev.yml -p danswer-stack down -v
+          docker compose -f docker-compose.dev.yml -p onyx-stack down -v

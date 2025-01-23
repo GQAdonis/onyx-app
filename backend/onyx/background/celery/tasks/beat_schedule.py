@@ -35,6 +35,19 @@ cloud_tasks_to_schedule = [
             "expires": BEAT_EXPIRES_DEFAULT,
         },
     },
+    {
+        "name": f"{ONYX_CLOUD_CELERY_TASK_PREFIX}_check-for-checkpoint-cleanup",
+        "task": OnyxCeleryTask.CLOUD_BEAT_TASK_GENERATOR,
+        "schedule": timedelta(hours=1 * CLOUD_BEAT_SCHEDULE_MULTIPLIER),
+        "options": {
+            "priority": OnyxCeleryPriority.HIGHEST,
+            "expires": BEAT_EXPIRES_DEFAULT,
+        },
+        "kwargs": {
+            "task_name": OnyxCeleryTask.CHECK_FOR_CHECKPOINT_CLEANUP,
+            "priority": OnyxCeleryPriority.LOW,
+        },
+    },
     # remaining tasks are cloud generators for per tenant tasks
     {
         "name": f"{ONYX_CLOUD_CELERY_TASK_PREFIX}_check-for-indexing",
@@ -167,6 +180,15 @@ if not MULTI_TENANT:
                 "schedule": timedelta(seconds=15),
                 "options": {
                     "priority": OnyxCeleryPriority.MEDIUM,
+                    "expires": BEAT_EXPIRES_DEFAULT,
+                },
+            },
+            {
+                "name": "check-for-checkpoint-cleanup",
+                "task": OnyxCeleryTask.CHECK_FOR_CHECKPOINT_CLEANUP,
+                "schedule": timedelta(hours=1),
+                "options": {
+                    "priority": OnyxCeleryPriority.LOW,
                     "expires": BEAT_EXPIRES_DEFAULT,
                 },
             },
