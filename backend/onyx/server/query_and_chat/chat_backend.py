@@ -635,17 +635,11 @@ def upload_files_for_chat(
             if file.content_type in image_content_types:
                 error_detail = "Unsupported image file type. Supported image types include .jpg, .jpeg, .png, .webp."
             elif file.content_type in text_content_types:
-                error_detail = "Unsupported text file type. Supported text types include .txt, .csv, .md, .mdx, .conf, "
-                ".log, .tsv."
+                error_detail = "Unsupported text file type."
             elif file.content_type in csv_content_types:
-                error_detail = (
-                    "Unsupported CSV file type. Supported CSV types include .csv."
-                )
+                error_detail = "Unsupported CSV file type."
             else:
-                error_detail = (
-                    "Unsupported document file type. Supported document types include .pdf, .docx, .pptx, .xlsx, "
-                    ".json, .xml, .yml, .yaml, .eml, .epub."
-                )
+                error_detail = "Unsupported document file type."
             raise HTTPException(status_code=400, detail=error_detail)
 
         if (
@@ -672,19 +666,15 @@ def upload_files_for_chat(
             else ChatFileType.PLAIN_TEXT
         )
 
-        if file_type == ChatFileType.IMAGE:
-            file_content = file.file
-            # NOTE: Image conversion to JPEG used to be enforced here.
-            # This was removed to:
-            # 1. Preserve original file content for downloads
-            # 2. Maintain transparency in formats like PNG
-            # 3. Ameliorate issue with file conversion
-        else:
-            file_content = io.BytesIO(file.file.read())
+        # 1) Read the entire file into memory once
+        file_bytes = file.file.read()
+
+        # 2) Prepare a BytesIO object for storing in the DB
+        file_content = io.BytesIO(file_bytes)
 
         new_content_type = file.content_type
 
-        # store the file (now JPEG for images)
+        # 3) Save the file in the file store
         file_id = str(uuid.uuid4())
         file_store.save_file(
             file_name=file_id,
@@ -694,11 +684,12 @@ def upload_files_for_chat(
             file_type=new_content_type or file_type.value,
         )
 
-        # if the file is a doc, extract text and store that so we don't need
-        # to re-extract it every time we send a message
+        # 4) If the file is a doc, extract text and store that separately
         if file_type == ChatFileType.DOC:
+            # Re-wrap bytes in a fresh BytesIO so we start at position 0
+            extracted_text_io = io.BytesIO(file_bytes)
             extracted_text = extract_file_text(
-                file=file.file,
+                file=extracted_text_io,
                 file_name=file.filename or "",
             )
             text_file_id = str(uuid.uuid4())
@@ -709,9 +700,7 @@ def upload_files_for_chat(
                 file_origin=FileOrigin.CHAT_UPLOAD,
                 file_type="text/plain",
             )
-            # for DOC type, just return this for the FileDescriptor
-            # as we would always use this as the ID to attach to the
-            # message
+            # Return the text file as the "main" file descriptor for doc types
             file_info.append((text_file_id, file.filename, ChatFileType.PLAIN_TEXT))
         else:
             file_info.append((file_id, file.filename, file_type))

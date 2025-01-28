@@ -388,7 +388,6 @@ export default function MyDocuments() {
     <div className="min-h-full w-full min-w-0 flex-1">
       <header className="flex bg-background w-full items-center justify-between gap-4 pl-11 pr-3 pt-2 md:pl-8 -translate-y-px">
         <h1 className=" flex items-center gap-1.5 text-lg font-medium leading-tight tracking-tight max-md:hidden">
-          <Grid className="h-5 w-5" />
           My Documents
         </h1>
         <div className="flex items-center gap-2">
@@ -477,7 +476,6 @@ export default function MyDocuments() {
                       } flex-1`}
                     >
                       <div className="font-tiempos flex items-center">
-                        <Grid className="h-5 w-5 mr-2 text-yellow-500" />
                         <span className="text-truncate inline-block max-w-md">
                           {folder.name}
                         </span>

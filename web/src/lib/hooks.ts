@@ -425,6 +425,16 @@ export function useLlmOverride(
   );
 
   useEffect(() => {
+    if (currentChatSession?.current_alternate_model) {
+      setLlmOverride(
+        getValidLlmOverride(currentChatSession.current_alternate_model)
+      );
+    } else {
+      setLlmOverride(globalDefault);
+    }
+  }, [currentChatSession]);
+
+  useEffect(() => {
     setGlobalDefault(getValidLlmOverride(globalModel));
   }, [globalModel, llmProviders]);
 
