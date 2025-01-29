@@ -4,7 +4,7 @@ export interface UserFolder {
   parent_id: number | null;
 }
 
-export interface UserFile {
+export interface UserFolder {
   id: number;
   name: string;
   parent_folder_id: number | null;
@@ -12,7 +12,7 @@ export interface UserFile {
 
 export interface FolderNode extends UserFolder {
   children: FolderNode[];
-  files: UserFile[];
+  files: UserFolder[];
 }
 
 export interface FilePickerModalProps {

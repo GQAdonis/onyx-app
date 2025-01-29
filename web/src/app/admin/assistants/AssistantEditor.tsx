@@ -80,7 +80,7 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { DeleteEntityModal } from "@/components/modals/DeleteEntityModal";
 import { DeletePersonaButton } from "./[id]/DeletePersonaButton";
 import Title from "@/components/ui/title";
-import { FilePickerModal } from "@/app/my-documents/components/FilePicker";
+import { FilePickerModal } from "@/app/chat/my-documents/components/FilePicker";
 
 function findSearchTool(tools: ToolSnapshot[]) {
   return tools.find((tool) => tool.in_code_tool_id === "SearchTool");

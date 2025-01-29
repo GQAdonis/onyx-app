@@ -2,17 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { Grid, List, UploadIcon } from "lucide-react";
-import { FolderTreeItem } from "./FolderTreeItem";
 import { FileListItem } from "./FileListItem";
 import { Breadcrumb } from "./Breadcrumb";
 import { SelectedItemsList } from "./SelectedItemsList";
 import {
   FolderNode,
   UserFolder,
-  UserFile,
+  UserFolder,
   FilePickerModalProps,
 } from "./types";
 import { Separator } from "@/components/ui/separator";
+import { SharedFolderItem } from "./SharedFolderItem";
 
 const ListIcon = () => <List className="h-4 w-4" />;
 const GridIcon = () => <Grid className="h-4 w-4" />;
@@ -32,7 +32,7 @@ const IconButton: React.FC<{
   </button>
 );
 
-function buildTree(folders: UserFolder[], files: UserFile[]): FolderNode {
+function buildTree(folders: UserFolder[], files: UserFolder[]): FolderNode {
   const folderMap: { [key: number]: FolderNode } = {};
   const rootNode: FolderNode = {
     id: 0,
@@ -73,7 +73,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   buttonContent,
 }) => {
   const [allFolders, setAllFolders] = useState<UserFolder[]>([]);
-  const [allFiles, setAllFiles] = useState<UserFile[]>([]);
+  const [allFiles, setAllFiles] = useState<UserFolder[]>([]);
   const [fileSystem, setFileSystem] = useState<FolderNode | null>(null);
   const [currentFolder, setCurrentFolder] = useState<FolderNode | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -164,9 +164,9 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
       title={title}
     >
       <div className="flex w-full items-center flex-col h-full">
-        <div className="grid  h-full grid-cols-2 overflow-y-hidden w-full">
-          <div className="w-full pb-4 border-r overflow-y-auto">
-            <div className="mb-4  flex gap-x-2 w-full">
+        <div className="grid h-full grid-cols-2 overflow-y-hidden w-full divide-x divide-gray-200">
+          <div className="w-full pb-4 overflow-y-auto">
+            <div className="mb-4 flex gap-x-2 w-full px-4">
               <div className="w-full relative">
                 <input
                   type="text"
@@ -204,29 +204,28 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
               </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-y-auto px-4">
               <div
-                className={`${view === "grid" ? "grid grid-cols-4 gap-4" : ""}`}
+                className={`mt-4 grid gap-3 md:mt-8 ${
+                  view === "grid" ? "md:grid-cols-1" : ""
+                } md:gap-6`}
               >
-                {currentFolder.children.map((folder) => (
-                  <div
-                    key={folder.id}
-                    className={` ${
-                      view === "grid"
-                        ? "flex flex-col items-center"
-                        : "flex items-center"
-                    }`}
+                {[
+                  {
+                    id: 0,
+                    name: "Root",
+                    parent_id: null,
+                    children: [],
+                    files: [],
+                  },
+                ].map((folder) => (
+                  <SharedFolderItem
+                    folder={folder}
+                    view={view}
                     onClick={() => handleFolderClick(folder)}
-                  >
-                    <FolderTreeItem
-                      node={folder}
-                      selectedItems={selectedItems}
-                      setSelectedItems={setSelectedItems}
-                      setCurrentFolder={setCurrentFolder}
-                      depth={0}
-                      view={view}
-                    />
-                  </div>
+                    description="This folder contains 1000 files and describes the state of the company"
+                    lastUpdated="47 minutes ago"
+                  />
                 ))}
 
                 {currentFolder.files.map((file) => (
@@ -241,9 +240,8 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
               </div>
             </div>
           </div>
-          {/* NOTE: update */}
-          <div className="w-full px-4 pb-4 m-2 flex flex-col h-[450px] ">
-            <div className="shrink flex h-full overflow-y-auto mb-1 ">
+          <div className="w-full px-4 pb-4 flex flex-col h-[450px]">
+            <div className="shrink flex h-full overflow-y-auto mb-1">
               <SelectedItemsList
                 links={links}
                 selectedItems={selectedItems}

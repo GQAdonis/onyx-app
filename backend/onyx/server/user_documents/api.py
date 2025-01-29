@@ -26,7 +26,6 @@ from onyx.server.documents.models import ConnectorBase
 from onyx.server.documents.models import CredentialBase
 from onyx.server.documents.models import FileUploadResponse
 from onyx.server.user_documents.models import FileResponse
-from onyx.server.user_documents.models import FileSystemResponse
 from onyx.server.user_documents.models import FolderDetailResponse
 from onyx.server.user_documents.models import FolderResponse
 from onyx.server.user_documents.models import MessageResponse
@@ -90,6 +89,7 @@ def get_folder(
     return FolderDetailResponse(
         id=folder.id,
         name=folder.name,
+        description=folder.description,
         files=[FileResponse.from_model(file) for file in folder.files],
     )
 
@@ -169,6 +169,7 @@ def update_folder(
     return FolderDetailResponse(
         id=folder.id,
         name=folder.name,
+        description=folder.description,
         files=[FileResponse.from_model(file) for file in folder.files],
     )
 
@@ -239,14 +240,11 @@ def move_file(
 def get_file_system(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FileSystemResponse:
+) -> list[FolderResponse]:
     user_id = user.id if user else None
     folders = db_session.query(UserFolder).filter(UserFolder.user_id == user_id).all()
-    files = db_session.query(UserFile).filter(UserFile.user_id == user_id).all()
-    return FileSystemResponse(
-        folders=[FolderResponse.from_model(folder) for folder in folders],
-        files=[FileResponse.from_model(file) for file in files],
-    )
+    # files = db_session.query(UserFile).filter(UserFile.user_id == user_id).all()
+    return ([FolderResponse.from_model(folder) for folder in folders],)
 
 
 @router.put("/user/file/{file_id}/rename")

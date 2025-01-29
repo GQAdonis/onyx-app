@@ -1,13 +1,13 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { UserFolder, UserFile } from "./types";
+import { UserFolder, UserFolder } from "./types";
 
 interface SelectedItemsListProps {
   uploadedFiles: File[];
   selectedItems: { files: number[]; folders: number[] };
   allFolders: UserFolder[];
-  allFiles: UserFile[];
+  allFiles: UserFolder[];
   onRemove: (type: "file" | "folder", id: number) => void;
   onRemoveUploadedFile: (name: string) => void;
   links: string[];

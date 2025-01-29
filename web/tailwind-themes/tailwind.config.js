@@ -240,6 +240,7 @@ module.exports = {
 
         // borders
         border: "var(--border)",
+        "border-input": "var(--border-medium)",
         "border-light": "var(--border-light)",
         "border-medium": "var(--border-medium)",
         "border-strong": "var(--border-strong)",

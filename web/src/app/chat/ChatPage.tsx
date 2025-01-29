@@ -113,7 +113,7 @@ import {
 import AssistantModal from "../assistants/mine/AssistantModal";
 import { getSourceMetadata } from "@/lib/sources";
 import { UserSettingsModal } from "./modal/UserSettingsModal";
-import { FilePickerModal } from "../my-documents/components/FilePicker";
+import { FilePickerModal } from "./my-documents/components/FilePicker";
 
 const TEMP_USER_MESSAGE_ID = -1;
 const TEMP_ASSISTANT_MESSAGE_ID = -2;

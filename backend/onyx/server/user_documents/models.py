@@ -10,16 +10,6 @@ from onyx.db.models import UserFolder
 router = APIRouter()
 
 
-class FolderResponse(BaseModel):
-    id: int
-    name: str
-    description: str
-
-    @classmethod
-    def from_model(cls, model: UserFolder) -> "FolderResponse":
-        return cls(id=model.id, name=model.name, description=model.description)
-
-
 class FileResponse(BaseModel):
     id: int
     name: str
@@ -33,6 +23,22 @@ class FileResponse(BaseModel):
             name=model.name,
             folder_id=model.folder_id,
             document_id=model.document_id,
+        )
+
+
+class FolderResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    files: List[FileResponse]
+
+    @classmethod
+    def from_model(cls, model: UserFolder) -> "FolderResponse":
+        return cls(
+            id=model.id,
+            name=model.name,
+            description=model.description,
+            files=[FileResponse.from_model(file) for file in model.files],
         )
 
 
