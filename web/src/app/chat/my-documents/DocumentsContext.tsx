@@ -18,12 +18,16 @@ export interface FolderResponse {
   sharedAssistants?: string[];
 }
 
-export interface FileResponse {
+export type FileResponse = {
   id: number;
   name: string;
   document_id: string;
   folder_id: number | null;
-}
+  size: number;
+  type: string;
+  lastModified: string;
+  tokens: number;
+};
 
 interface DocumentsContextType {
   folders: FolderResponse[];

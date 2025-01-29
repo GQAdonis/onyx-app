@@ -154,7 +154,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     return selectedItems.files.length * 10 + selectedItems.folders.length * 50;
   };
 
-  if (!fileSystem || !currentFolder) return null;
+  // if (!fileSystem || !currentFolder) return null;
 
   return (
     <Modal

@@ -6,6 +6,7 @@ import {
 } from "../../components/FileListItem";
 import { Button } from "@/components/ui/button";
 import { Grid, List, Loader2 } from "lucide-react";
+import { FileUploadSection } from "./FileUploadSection";
 
 interface DocumentListProps {
   files: FileResponse[];
@@ -21,6 +22,7 @@ interface DocumentListProps {
   ) => Promise<void>;
   onDelete: (itemId: number, isFolder: boolean) => Promise<void>;
   onDownload: (documentId: string) => Promise<void>;
+  onUpload: (files: File[]) => void;
   isLoading: boolean;
 }
 
@@ -31,6 +33,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   onRename,
   onDelete,
   onDownload,
+  onUpload,
   isLoading,
 }) => {
   const [view, setView] = useState<"grid" | "list">("list");
@@ -42,11 +45,13 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Documents</h2>
+        <h2 className="text-sm font-semibold">Documents in this Project</h2>
         <Button onClick={toggleView} variant="outline" size="sm">
           {view === "grid" ? <List size={16} /> : <Grid size={16} />}
         </Button>
       </div>
+      <FileUploadSection onUpload={onUpload} />
+
       <div className={view === "grid" ? "grid grid-cols-4 gap-4" : "space-y-2"}>
         {files.map((file) => (
           <FileListItem

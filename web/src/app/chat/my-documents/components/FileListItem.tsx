@@ -41,7 +41,7 @@ export const FileListItem: React.FC<FileListItemProps> = ({
 }) => {
   return (
     <div
-      className={`p-2 ${
+      className={`p-2 group ${
         view === "grid"
           ? "flex flex-col items-center"
           : "flex items-center justify-between hover:bg-neutral-100 rounded cursor-pointer"
@@ -74,7 +74,10 @@ export const FileListItem: React.FC<FileListItemProps> = ({
       </div>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
+          <Button
+            variant="ghost"
+            className="group-hover:visible invisible h-8 w-8 p-0"
+          >
             <MoreVertical className="h-4 w-4" />
           </Button>
         </PopoverTrigger>

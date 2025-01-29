@@ -33,7 +33,7 @@ export const SharedFolderItem: React.FC<SharedFolderItemProps> = ({
     <a
       className={`from-[#f2f0e8]/80 to-[#F7F6F0] border-0.5 border-border hover:from-[#f2f0e8] hover:to-[#F7F6F0] hover:border-border-200 text-md group relative flex cursor-pointer ${
         false ? "flex-row items-center" : "flex-col"
-      } overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.98]`}
+      } overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.99]`}
       onClick={(e) => {
         e.preventDefault();
         onClick(folder.id);

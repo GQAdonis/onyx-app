@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { SharedFolderItem } from "./components/SharedFolderItem";
 import CreateEntityModal from "@/components/modals/CreateEntityModal";
 import { useDocumentsContext } from "./DocumentsContext";
+import { SortIcon } from "@/components/icons/icons";
 
 const IconButton: React.FC<{
   icon: React.ComponentType;
@@ -205,9 +206,9 @@ export default function MyDocuments() {
         </div>
       </header>
       <main className="w-full mt-4">
-        <div className=" top-3 z-[5] flex gap-4 bg-gradient-to-b via-50% max-lg:flex-col lg:sticky lg:items-center">
-          <div className="w-full md:max-w-96">
-            <div className="bg-background-000 border border-border-200 hover:border-border-100 transition-colors placeholder:text-text-500 focus:border-accent-secondary-100 focus-within:!border-accent-secondary-100 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-3 rounded-[0.6rem] w-full inline-flex cursor-text items-stretch gap-2">
+        <div className=" top-3 w-full z-[5] flex gap-4 bg-gradient-to-b via-50% max-lg:flex-col lg:sticky lg:items-center">
+          <div className="flex justify-between  w-full ">
+            <div className="bg-background-000 border md:max-w-96 border-border-200 hover:border-border-100 transition-colors placeholder:text-text-500 focus:border-accent-secondary-100 focus-within:!border-accent-secondary-100 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 h-11 px-3 rounded-[0.6rem] w-full inline-flex cursor-text items-stretch gap-2">
               <div className="flex items-center">
                 <Search className="h-4 w-4 text-text-400" />
               </div>
@@ -219,6 +220,7 @@ export default function MyDocuments() {
                 className="w-full placeholder:text-text-500 m-0 bg-transparent p-0 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
+            <SortIcon />
           </div>
         </div>
         {presentingDocument && (

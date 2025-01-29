@@ -11,7 +11,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { SourcesIcon, XIcon } from "@/components/icons/icons";
+import { XIcon } from "@/components/icons/icons";
 
 interface DocumentResultsProps {
   closeSidebar: () => void;
