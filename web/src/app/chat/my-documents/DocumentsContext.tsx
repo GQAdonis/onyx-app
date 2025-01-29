@@ -58,6 +58,7 @@ interface DocumentsContextType {
   summarizeDocument: (documentId: string) => Promise<string>;
   addToCollection: (documentId: string, collectionId: string) => Promise<void>;
   isLoading: boolean;
+  uploadFile: (formData: FormData, folderId: number) => Promise<void>;
 }
 
 const DocumentsContext = createContext<DocumentsContextType | undefined>(
@@ -91,6 +92,22 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     const data = await response.json();
     setFolders(data);
   }, []);
+
+  const uploadFile = useCallback(
+    async (formData: FormData, folderId: number) => {
+      formData.append("folder_id", folderId.toString());
+      const response = await fetch("/api/user/file/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Failed to upload file");
+      }
+      // const data: FileUploadResponse = await response.json();
+      await refreshFolders();
+    },
+    [refreshFolders]
+  );
 
   const createFolder = useCallback(
     async (name: string, description: string) => {
@@ -278,6 +295,7 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     summarizeDocument,
     addToCollection,
     isLoading,
+    uploadFile,
   };
 
   return (

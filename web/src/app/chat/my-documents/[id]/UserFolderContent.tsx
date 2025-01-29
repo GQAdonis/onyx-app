@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Upload } from "lucide-react";
 import { useDocumentsContext, FolderResponse } from "../DocumentsContext";
@@ -7,6 +7,7 @@ import { FolderHeader } from "./components/FolderHeader";
 import { KnowledgeCapacity } from "./components/KnowledgeCapacity";
 import { DocumentList } from "./components/DocumentList";
 import { UploadWarning } from "./components/UploadWarning";
+import { uploadFile } from "@/app/admin/assistants/lib";
 
 export default function UserFolderContent({ folderId }: { folderId: number }) {
   const router = useRouter();
@@ -18,29 +19,37 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
     downloadItem,
     renameItem,
     deleteItem,
+    uploadFile,
   } = useDocumentsContext();
 
   const [folderDetails, setFolderDetails] = useState<FolderResponse | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshFolderDetails = useCallback(async () => {
+    const details = await getFolderDetails(folderId);
+    setFolderDetails(details);
+    setIsLoading(false);
+  }, [getFolderDetails, folderId]);
+
   useEffect(() => {
-    const fetchFolderDetails = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const details = await getFolderDetails(folderId);
-        setFolderDetails(details);
-      } catch (error) {
-        console.error("Error fetching folder details:", error);
-        setError("Failed to fetch folder details. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchFolderDetails();
+    refreshFolderDetails();
+    // const fetchFolderDetails = async () => {
+    //   setIsLoading(true);
+    //   setError(null);
+    //   try {
+    //     const details = await getFolderDetails(folderId);
+    //     setFolderDetails(details);
+    //   } catch (error) {
+    //     console.error("Error fetching folder details:", error);
+    //     setError("Failed to fetch folder details. Please try again.");
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    // };
+    // fetchFolderDetails();
   }, [folderId, getFolderDetails]);
 
   const handleBack = () => {
@@ -68,12 +77,35 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
     }
   };
 
-  const handleUpload = () => {
-    // Implement document upload functionality
-    console.log("Upload document");
+  const handleUpload = async () => {
+    try {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.multiple = true;
+      input.accept = ".pdf,.doc,.docx,.txt";
+
+      input.onchange = async (e) => {
+        const files = (e.target as HTMLInputElement).files;
+        if (files) {
+          const formData = new FormData();
+          for (let i = 0; i < files.length; i++) {
+            formData.append("files", files[i]);
+          }
+          setIsLoading(true);
+
+          await uploadFile(formData, folderId);
+          await refreshFolderDetails();
+        }
+      };
+
+      input.click();
+    } catch (error) {
+      console.error("Error uploading documents:", error);
+      setError("Failed to upload documents. Please try again.");
+    }
   };
 
-  if (isLoading) {
+  if (isLoading === undefined) {
     return <div>Loading folder details...</div>;
   }
 
@@ -108,6 +140,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
       <KnowledgeCapacity files={folderDetails.files} />
 
       <DocumentList
+        isLoading={isLoading}
         files={folderDetails.files}
         onSummarize={summarizeDocument}
         onAddToCollection={addToCollection}

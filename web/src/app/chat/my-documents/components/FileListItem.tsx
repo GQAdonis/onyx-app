@@ -44,7 +44,7 @@ export const FileListItem: React.FC<FileListItemProps> = ({
       className={`p-2 ${
         view === "grid"
           ? "flex flex-col items-center"
-          : "flex items-center justify-between hover:bg-gray-100 rounded cursor-pointer"
+          : "flex items-center justify-between hover:bg-neutral-100 rounded cursor-pointer"
       }`}
     >
       <div
@@ -62,7 +62,7 @@ export const FileListItem: React.FC<FileListItemProps> = ({
         <FileIcon
           className={`${
             view === "grid" ? "h-12 w-12 mb-2" : "h-5 w-5 mr-2"
-          } text-gray-500`}
+          } text-neutral-500`}
         />
         <span
           className={`max-w-full text-sm truncate ${
@@ -120,6 +120,38 @@ export const FileListItem: React.FC<FileListItemProps> = ({
           </div>
         </PopoverContent>
       </Popover>
+    </div>
+  );
+};
+
+export const SkeletonFileListItem: React.FC<{
+  view: "grid" | "list";
+}> = ({ view }) => {
+  return (
+    <div
+      className={`p-2 ${
+        view === "grid"
+          ? "flex flex-col items-center"
+          : "flex items-center justify-between hover:bg-neutral-100 rounded"
+      }`}
+    >
+      <div
+        className={`flex items-center ${
+          view === "grid" ? "flex-col" : "w-full"
+        }`}
+      >
+        <div
+          className={`${
+            view === "grid" ? "h-12 w-12 mb-2" : "h-5 w-5 mr-2"
+          } bg-neutral-200 rounded animate-pulse`}
+        />
+        <div
+          className={`h-6 bg-neutral-200 rounded animate-pulse ${
+            view === "grid" ? "w-20 mt-2" : "w-72"
+          }`}
+        />
+      </div>
+      <div className="h-6 w-6 mr-1 bg-neutral-200 rounded-full animate-pulse" />
     </div>
   );
 };

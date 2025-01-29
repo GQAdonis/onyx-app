@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { FileResponse } from "../../DocumentsContext";
-import { FileListItem } from "../../components/FileListItem";
+import {
+  FileListItem,
+  SkeletonFileListItem,
+} from "../../components/FileListItem";
 import { Button } from "@/components/ui/button";
-import { Grid, List } from "lucide-react";
+import { Grid, List, Loader2 } from "lucide-react";
 
 interface DocumentListProps {
   files: FileResponse[];
@@ -18,6 +21,7 @@ interface DocumentListProps {
   ) => Promise<void>;
   onDelete: (itemId: number, isFolder: boolean) => Promise<void>;
   onDownload: (documentId: string) => Promise<void>;
+  isLoading: boolean;
 }
 
 export const DocumentList: React.FC<DocumentListProps> = ({
@@ -27,6 +31,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   onRename,
   onDelete,
   onDownload,
+  isLoading,
 }) => {
   const [view, setView] = useState<"grid" | "list">("list");
 
@@ -55,6 +60,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
             onDownload={onDownload}
           />
         ))}
+        {isLoading && <SkeletonFileListItem view={view} />}
       </div>
     </div>
   );
