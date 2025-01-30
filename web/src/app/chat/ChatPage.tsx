@@ -325,8 +325,6 @@ export function ChatPage({
 
   // always set the model override for the chat session, when an assistant, llm provider, or user preference exists
   useEffect(() => {
-    console.log("\n\n\n\n\n");
-    console.log("LIVE ASSISTNATS CHANGED");
     if (noAssistants) return;
     const personaDefault = getLLMProviderOverrideForPersona(
       liveAssistant,
@@ -813,6 +811,9 @@ export function ChatPage({
   }, [submittedMessage, currentSessionChatState]);
 
   const [
+    selectedFiles,
+    addSelectedFile,
+    removeSelectedFile,
     selectedDocuments,
     toggleDocumentSelection,
     clearSelectedDocuments,
@@ -1284,6 +1285,7 @@ export function ChatPage({
           .map((document) => document.db_doc_id as number),
         queryOverride,
         forceSearch,
+        userFileDescriptors: selectedFiles.map((file) => file.id),
         regenerate: regenerationRequest !== undefined,
         modelProvider:
           modelOverRide?.name ||
@@ -2078,10 +2080,13 @@ export function ChatPage({
           buttonContent="Set as Context"
           title="User Documents"
           isOpen={true}
+          selectedFiles={selectedFiles}
           onClose={() => setToggleDocSelection(false)}
           onSave={() => {
             setToggleDocSelection(false);
           }}
+          addSelectedFile={addSelectedFile}
+          removeSelectedFile={removeSelectedFile}
         />
       )}
 
@@ -2765,6 +2770,8 @@ export function ChatPage({
                               </div>
                             )}
                             <ChatInputBar
+                              selectedFiles={selectedFiles}
+                              removeSelectedFile={removeSelectedFile}
                               toggleDocSelection={() => {
                                 setToggleDocSelection(true);
                               }}

@@ -113,9 +113,9 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   if (!folderDetails) {
     return <div>No folder details found.</div>;
   }
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  // if (isLoading) {
+  //   return <div>Loading...</div>;
+  // }
 
   const totalTokens = folderDetails.files.length * 1000; // Mock data: assume 1000 tokens per file
   const maxTokens = 10000; // Mock data: max tokens for the model

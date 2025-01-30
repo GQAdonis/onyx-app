@@ -114,6 +114,7 @@ export async function* sendMessage({
   regenerate,
   message,
   fileDescriptors,
+  userFileDescriptors,
   parentMessageId,
   chatSessionId,
   promptId,
@@ -157,6 +158,7 @@ export async function* sendMessage({
     prompt_id: promptId,
     search_doc_ids: documentsAreSelected ? selectedDocumentIds : null,
     file_descriptors: fileDescriptors,
+    user_file_descriptors: userFileDescriptors,
     regenerate,
     retrieval_options: !documentsAreSelected
       ? {

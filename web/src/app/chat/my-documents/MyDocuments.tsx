@@ -31,20 +31,58 @@ import CreateEntityModal from "@/components/modals/CreateEntityModal";
 import { useDocumentsContext } from "./DocumentsContext";
 import { SortIcon } from "@/components/icons/icons";
 
-const IconButton: React.FC<{
-  icon: React.ComponentType;
-  onClick: () => void;
-  active: boolean;
-}> = ({ icon: Icon, onClick, active }) => (
-  <button
-    className={`p-2 flex-none h-10 w-10 flex items-center justify-center rounded ${
-      active ? "bg-gray-200" : "hover:bg-gray-100"
-    }`}
-    onClick={onClick}
-  >
-    <Icon />
-  </button>
-);
+import { ChevronDown } from "lucide-react";
+
+enum SortType {
+  TimeCreated = "Time Created",
+  Alphabetical = "Alphabetical",
+}
+
+interface SortSelectorProps {
+  onSortChange: (sortType: SortType) => void;
+}
+
+const SortSelector: React.FC<SortSelectorProps> = ({ onSortChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentSort, setCurrentSort] = useState<SortType>(
+    SortType.TimeCreated
+  );
+
+  const handleSortChange = (sortType: SortType) => {
+    setCurrentSort(sortType);
+    onSortChange(sortType);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative h-fit">
+      {isOpen && (
+        <div className="absolute right-0 top-full w-48 bg-white rounded-md shadow-lg z-10">
+          <div className="py-1">
+            {Object.values(SortType).map((sortType) => (
+              <button
+                key={sortType}
+                onClick={() => handleSortChange(sortType)}
+                className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 focus:outline-none"
+              >
+                {sortType}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 text-sm text-neutral-600 hover:text-neutral-800 focus:outline-none"
+      >
+        <SortIcon className="w-4 h-4" />
+        <span>{currentSort}</span>
+        <ChevronDown className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
 
 const SkeletonLoader = ({ count = 5 }) => (
   <div className={`mt-4 grid gap-3 md:mt-8 md:grid-cols-2 md:gap-6`}>
@@ -77,6 +115,10 @@ export default function MyDocuments() {
     setPage,
   } = useDocumentsContext();
 
+  const [sortType, setSortType] = useState<SortType>(SortType.TimeCreated);
+  const handleSortChange = (sortType: SortType) => {
+    setSortType(sortType);
+  };
   const pageLimit = 10;
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -220,7 +262,7 @@ export default function MyDocuments() {
                 className="w-full placeholder:text-text-500 m-0 bg-transparent p-0 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            <SortIcon />
+            <SortSelector onSortChange={handleSortChange} />
           </div>
         </div>
         {presentingDocument && (

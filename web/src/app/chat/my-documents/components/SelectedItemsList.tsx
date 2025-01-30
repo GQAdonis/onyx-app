@@ -1,13 +1,15 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { UserFolder, UserFolder } from "./types";
+import { UserFile, UserFolder } from "./types";
+import { FolderResponse, FileResponse } from "../DocumentsContext";
 
 interface SelectedItemsListProps {
   uploadedFiles: File[];
-  selectedItems: { files: number[]; folders: number[] };
-  allFolders: UserFolder[];
-  allFiles: UserFolder[];
+  allFolders: FolderResponse[];
+  allFiles: FileResponse[];
+  folders: FolderResponse[];
+  files: FileResponse[];
   onRemove: (type: "file" | "folder", id: number) => void;
   onRemoveUploadedFile: (name: string) => void;
   links: string[];
@@ -16,19 +18,13 @@ interface SelectedItemsListProps {
 export const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   links,
   uploadedFiles,
-  selectedItems,
   allFolders,
+  folders,
   allFiles,
+  files,
   onRemove,
   onRemoveUploadedFile,
 }) => {
-  const selectedFolders = allFolders.filter((folder) =>
-    selectedItems.folders.includes(folder.id)
-  );
-  const selectedFiles = allFiles.filter((file) =>
-    selectedItems.files.includes(file.id)
-  );
-
   return (
     <div className="h-full w-full flex flex-col">
       <h3 className="font-semibold mb-2">Selected Items</h3>
@@ -65,7 +61,7 @@ export const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
               </Button>
             </div>
           ))}
-          {selectedFolders.map((folder) => (
+          {folders.map((folder) => (
             <div
               key={folder.id}
               className="flex items-center justify-between bg-gray-100 p-2 rounded"
@@ -80,7 +76,7 @@ export const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
               </Button>
             </div>
           ))}
-          {selectedFiles.map((file) => (
+          {files.map((file) => (
             <div
               key={file.id}
               className="flex items-center justify-between bg-gray-100 p-2 rounded"

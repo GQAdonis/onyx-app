@@ -67,6 +67,7 @@ from onyx.document_index.factory import get_default_document_index
 from onyx.file_store.models import ChatFileType
 from onyx.file_store.models import FileDescriptor
 from onyx.file_store.utils import load_all_chat_files
+from onyx.file_store.utils import load_all_user_files
 from onyx.file_store.utils import save_files
 from onyx.llm.exceptions import GenAIDisabledException
 from onyx.llm.factory import get_llms_for_persona
@@ -511,11 +512,12 @@ def stream_chat_message_objects(
         files = load_all_chat_files(
             history_msgs, new_msg_req.file_descriptors, db_session
         )
+        user_files = load_all_user_files(new_msg_req.user_file_descriptors, db_session)
         latest_query_files = [
             file
             for file in files
             if file.file_id in [f["id"] for f in new_msg_req.file_descriptors]
-        ]
+        ] + user_files
 
         if user_message:
             attach_files_to_chat_message(

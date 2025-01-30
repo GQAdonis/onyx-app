@@ -34,6 +34,7 @@ import { getFormattedDateRangeString } from "@/lib/dateUtils";
 import { truncateString } from "@/lib/utils";
 import { buildImgUrl } from "../files/images/utils";
 import { useUser } from "@/components/user/UserProvider";
+import { FileResponse } from "../my-documents/DocumentsContext";
 
 const MAX_INPUT_HEIGHT = 200;
 
@@ -88,7 +89,9 @@ export const SourceChip = ({
 interface ChatInputBarProps {
   toggleDocSelection: () => void;
   removeDocs: () => void;
+  removeSelectedFile: (file: FileResponse) => void;
   showConfigureAPIKey: () => void;
+  selectedFiles: FileResponse[];
   selectedDocuments: OnyxDocument[];
   message: string;
   setMessage: (message: string) => void;
@@ -120,12 +123,14 @@ export function ChatInputBar({
   filterManager,
   showConfigureAPIKey,
   selectedDocuments,
+  selectedFiles,
   message,
   setMessage,
   stopGenerating,
   onSubmit,
   chatState,
 
+  removeSelectedFile,
   // assistants
   selectedAssistant,
   setAlternativeAssistant,
@@ -531,6 +536,7 @@ export function ChatInputBar({
             />
 
             {(selectedDocuments.length > 0 ||
+              selectedFiles.length > 0 ||
               files.length > 0 ||
               filterManager.timeRange ||
               filterManager.selectedDocumentSets.length > 0 ||
@@ -551,6 +557,16 @@ export function ChatInputBar({
                             )
                           );
                         }}
+                      />
+                    ))}
+
+                  {selectedFiles.length > 0 &&
+                    selectedFiles.map((file) => (
+                      <SourceChip
+                        key={file.id}
+                        icon={<FileIcon size={16} />}
+                        title={file.name}
+                        onRemove={() => removeSelectedFile(file)}
                       />
                     ))}
 

@@ -1,18 +1,38 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Grid, List, UploadIcon } from "lucide-react";
-import { FileListItem } from "./FileListItem";
-import { Breadcrumb } from "./Breadcrumb";
+import { Grid, List, UploadIcon, FolderIcon, FileIcon } from "lucide-react";
 import { SelectedItemsList } from "./SelectedItemsList";
-import {
-  FolderNode,
-  UserFolder,
-  UserFolder,
-  FilePickerModalProps,
-} from "./types";
+import { FilePickerModalProps } from "./types";
 import { Separator } from "@/components/ui/separator";
-import { SharedFolderItem } from "./SharedFolderItem";
+import { useDocumentsContext } from "../DocumentsContext";
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+  DragEndEvent,
+  DragStartEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  DragMoveEvent,
+  KeyboardSensor,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { FolderResponse, FileResponse } from "../DocumentsContext";
+
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 const ListIcon = () => <List className="h-4 w-4" />;
 const GridIcon = () => <Grid className="h-4 w-4" />;
@@ -32,38 +52,90 @@ const IconButton: React.FC<{
   </button>
 );
 
-function buildTree(folders: UserFolder[], files: UserFolder[]): FolderNode {
-  const folderMap: { [key: number]: FolderNode } = {};
-  const rootNode: FolderNode = {
-    id: 0,
-    name: "Root",
-    parent_id: null,
-    children: [],
-    files: [],
+const DraggableItem: React.FC<{
+  id: string;
+  type: "folder" | "file";
+  item: FolderResponse | FileResponse;
+  onClick?: () => void;
+}> = ({ id, type, item, onClick }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 1 : "auto",
   };
 
-  folders.forEach((folder) => {
-    folderMap[folder.id] = { ...folder, children: [], files: [] };
-  });
+  if (type === "folder") {
+    return (
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <FilePickerFolderItem
+          folder={item as FolderResponse}
+          onClick={onClick || (() => {})}
+        />
+      </div>
+    );
+  }
 
-  files.forEach((file) => {
-    if (file.parent_folder_id === null) {
-      rootNode.files.push(file);
-    } else if (folderMap[file.parent_folder_id]) {
-      folderMap[file.parent_folder_id].files.push(file);
-    }
-  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded-md ${
+        isDragging ? "bg-gray-200" : ""
+      }`}
+      onClick={onClick}
+    >
+      <FileIcon className="mr-2 text-gray-500" />
+      <span className="text-sm font-medium">{(item as FileResponse).name}</span>
+    </div>
+  );
+};
 
-  folders.forEach((folder) => {
-    if (folder.parent_id === null) {
-      rootNode.children.push(folderMap[folder.id]);
-    } else if (folderMap[folder.parent_id]) {
-      folderMap[folder.parent_id].children.push(folderMap[folder.id]);
-    }
-  });
-
-  return rootNode;
-}
+const FilePickerFolderItem: React.FC<{
+  folder: FolderResponse;
+  onClick: () => void;
+}> = ({ folder, onClick }) => {
+  return (
+    <div
+      className="from-[#f2f0e8]/80 to-[#F7F6F0] border-0.5 border-border hover:from-[#f2f0e8] hover:to-[#F7F6F0] hover:border-border-200 text-md group relative flex cursor-pointer flex-col overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.99]"
+      onClick={onClick}
+    >
+      <div className="flex flex-col flex-1">
+        <div className="font-tiempos flex items-center">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-truncate text-text-dark inline-block max-w-md">
+                  {folder.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{folder.name}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        {folder.description && (
+          <div className="text-text-400 mt-1 line-clamp-2 text-xs">
+            {folder.description}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   isOpen,
@@ -71,90 +143,190 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   onSave,
   title,
   buttonContent,
+  addSelectedFile,
+  selectedFiles,
+  removeSelectedFile,
 }) => {
-  const [allFolders, setAllFolders] = useState<UserFolder[]>([]);
-  const [allFiles, setAllFiles] = useState<UserFolder[]>([]);
-  const [fileSystem, setFileSystem] = useState<FolderNode | null>(null);
-  const [currentFolder, setCurrentFolder] = useState<FolderNode | null>(null);
+  const {
+    folders,
+    refreshFolders,
+    uploadFile,
+    currentFolder,
+    setCurrentFolder,
+    renameItem,
+    deleteItem,
+    moveItem,
+    summarizeDocument,
+    addToCollection,
+    downloadItem,
+  } = useDocumentsContext();
+
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [links, setLinks] = useState<string[]>([]);
+  const [selectedFolders, setSelectedFolders] = useState<FolderResponse[]>([]);
 
-  const [selectedItems, setSelectedItems] = useState<{
-    files: number[];
-    folders: number[];
-  }>({ files: [], folders: [] });
   const [view, setView] = useState<"grid" | "list">("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentFolderFiles, setCurrentFolderFiles] = useState<FileResponse[]>(
+    []
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isHoveringRight, setIsHoveringRight] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
-    const loadFileSystem = async () => {
-      const res = await fetch("/api/user/file-system");
-      const data = await res.json();
-      const folders = data.folders.map((f: any) => ({
-        id: f.id,
-        name: f.name,
-        parent_id: f.parent_id,
-      }));
-      const files = data.files.map((f: any) => ({
-        id: f.id,
-        name: f.name,
-        parent_folder_id: f.parent_folder_id,
-      }));
-
-      setAllFolders(folders);
-      setAllFiles(files);
-
-      const tree = buildTree(folders, files);
-      setFileSystem(tree);
-      setCurrentFolder(tree);
-    };
     if (isOpen) {
-      loadFileSystem();
+      refreshFolders();
     }
-  }, [isOpen]);
+  }, [isOpen, refreshFolders]);
+
+  useEffect(() => {
+    if (currentFolder) {
+      const folder = folders.find((f) => f.id === currentFolder);
+      setCurrentFolderFiles(folder?.files || []);
+    } else {
+      setCurrentFolderFiles([]);
+    }
+  }, [currentFolder, folders]);
+
+  useEffect(() => {
+    if (searchQuery) {
+      setCurrentFolder(null);
+    }
+  }, [searchQuery]);
 
   const handleSave = () => {
-    onSave(selectedItems);
+    // onSave(selectedItems);
     onClose();
   };
 
   const handleRemoveSelectedItem = (type: "file" | "folder", id: number) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [type === "file" ? "files" : "folders"]: prev[
-        type === "file" ? "files" : "folders"
-      ].filter((itemId) => itemId !== id),
-    }));
+    if (type === "file") {
+      removeSelectedFile(currentFolderFiles.find((f) => f.id === id)!);
+      // setSelectedFiles((prev) => prev.filter((file) => file.id !== id));
+    } else {
+      setSelectedFolders((prev) => prev.filter((folder) => folder.id !== id));
+    }
   };
 
   const handleRemoveUploadedFile = (name: string) => {
     setUploadedFiles((prev) => prev.filter((file) => file.name !== name));
   };
-
-  const handleFolderClick = (folder: FolderNode) => {
-    setCurrentFolder(folder);
-  };
-
-  const handleFileSelect = (fileId: number) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      files: prev.files.includes(fileId)
-        ? prev.files.filter((id) => id !== fileId)
-        : [...prev.files, fileId],
-    }));
-  };
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      setUploadedFiles((prev) => [...prev, ...Array.from(files)]);
+  const handleFolderClick = (folderId: number) => {
+    console.log(`Folder clicked: ${folderId}`);
+    setCurrentFolder(folderId);
+    const clickedFolder = folders.find((f) => f.id === folderId);
+    if (clickedFolder) {
+      console.log(`Found folder: ${clickedFolder.name}`);
+      setCurrentFolderFiles(clickedFolder.files || []);
+    } else {
+      console.log(`Folder not found for id: ${folderId}`);
+      setCurrentFolderFiles([]);
     }
   };
 
-  const calculateTokens = () => {
-    // This is a placeholder calculation. Replace with actual token calculation logic.
-    return selectedItems.files.length * 10 + selectedItems.folders.length * 50;
+  const handleFileSelect = (fileId: number) => {
+    console.log(`File selected: ${fileId}`);
+    addSelectedFile(currentFolderFiles.find((f) => f.id === fileId)!);
   };
 
-  // if (!fileSystem || !currentFolder) return null;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File upload started");
+    const files = e.target.files;
+    if (files) {
+      setUploadedFiles((prev) => [...prev, ...Array.from(files)]);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("file", file);
+        await uploadFile(formData, currentFolder || 0);
+      }
+      refreshFolders();
+    }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    console.log("Drag started:", event);
+    setActiveId(event.active.id.toString());
+  };
+
+  const handleDragMove = (event: DragMoveEvent) => {
+    console.log("Drag move:", event);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    console.log("Drag ended:", { active, over, isHoveringRight });
+
+    if (active.id !== over?.id && isHoveringRight) {
+      const activeType = active.id.toString().startsWith("folder")
+        ? "folders"
+        : "files";
+      const activeId = parseInt(active.id.toString().split("-")[1], 10);
+
+      setSelectedFolders((prev) => [...prev]);
+      // setSelectedFiles((prev) => [...prev, activeId]);
+
+      console.log(`Added ${activeType} with id ${activeId} to selected items`);
+    } else {
+      console.log("Item not added to selection");
+    }
+
+    setActiveId(null);
+    setIsHoveringRight(false);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setIsHoveringRight(false);
+  };
+
+  const filteredFolders = folders.filter((folder) =>
+    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const calculateTokens = () => {
+    // This is a placeholder calculation. Replace with actual token calculation logic.
+    return selectedFiles.length * 10 + selectedFolders.length * 50;
+  };
+
+  const renderNavigation = () => {
+    if (currentFolder !== null) {
+      return (
+        <div
+          className="flex items-center mb-4 text-sm text-gray-600 cursor-pointer hover:text-gray-800"
+          onClick={() => setCurrentFolder(null)}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 mr-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back to Folders
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Modal
@@ -170,8 +342,10 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
               <div className="w-full relative">
                 <input
                   type="text"
-                  placeholder="Search files and folders..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md   focus:border-transparent"
+                  placeholder="Search folders..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:border-transparent"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
@@ -205,48 +379,82 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
             </div>
 
             <div className="flex-grow overflow-y-auto px-4">
-              <div
-                className={`mt-4 grid gap-3 md:mt-8 ${
-                  view === "grid" ? "md:grid-cols-1" : ""
-                } md:gap-6`}
+              {renderNavigation()}
+              <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+                collisionDetection={closestCenter}
               >
-                {[
-                  {
-                    id: 0,
-                    name: "Root",
-                    parent_id: null,
-                    children: [],
-                    files: [],
-                  },
-                ].map((folder) => (
-                  <SharedFolderItem
-                    folder={folder}
-                    view={view}
-                    onClick={() => handleFolderClick(folder)}
-                    description="This folder contains 1000 files and describes the state of the company"
-                    lastUpdated="47 minutes ago"
-                  />
-                ))}
+                <SortableContext
+                  items={[
+                    ...filteredFolders.map((f) => `folder-${f.id}`),
+                    ...currentFolderFiles.map((f) => `file-${f.id}`),
+                  ]}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="mt-4 space-y-3">
+                    {currentFolder === null
+                      ? filteredFolders.map((folder) => (
+                          <DraggableItem
+                            key={`folder-${folder.id}`}
+                            id={`folder-${folder.id}`}
+                            type="folder"
+                            item={folder}
+                            onClick={() => handleFolderClick(folder.id)}
+                          />
+                        ))
+                      : currentFolderFiles.map((file) => (
+                          <DraggableItem
+                            key={`file-${file.id}`}
+                            id={`file-${file.id}`}
+                            type="file"
+                            item={file}
+                            onClick={() => handleFileSelect(file.id)}
+                          />
+                        ))}
+                  </div>
+                </SortableContext>
 
-                {currentFolder.files.map((file) => (
-                  <FileListItem
-                    key={file.id}
-                    file={file}
-                    isSelected={selectedItems.files.includes(file.id)}
-                    onSelect={() => handleFileSelect(file.id)}
-                    view={view}
-                  />
-                ))}
-              </div>
+                <DragOverlay>
+                  {activeId ? (
+                    <DraggableItem
+                      id={activeId}
+                      type={activeId.startsWith("folder") ? "folder" : "file"}
+                      item={
+                        activeId.startsWith("folder")
+                          ? folders.find(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )!
+                          : currentFolderFiles.find(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )!
+                      }
+                    />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </div>
           </div>
-          <div className="w-full px-4 pb-4 flex flex-col h-[450px]">
+          <div
+            className={`w-full px-4 pb-4 flex flex-col h-[450px] ${
+              isHoveringRight ? "bg-blue-50" : ""
+            }`}
+            onDragEnter={() => setIsHoveringRight(true)}
+            onDragLeave={() => setIsHoveringRight(false)}
+          >
             <div className="shrink flex h-full overflow-y-auto mb-1">
               <SelectedItemsList
                 links={links}
-                selectedItems={selectedItems}
-                allFolders={allFolders}
-                allFiles={allFiles}
+                folders={selectedFolders}
+                files={selectedFiles}
+                // selectedItems={selectedItems}
+                allFolders={folders}
+                allFiles={currentFolderFiles}
                 uploadedFiles={uploadedFiles}
                 onRemove={handleRemoveSelectedItem}
                 onRemoveUploadedFile={handleRemoveUploadedFile}
@@ -254,7 +462,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
             </div>
 
             <div className="flex flex-col">
-              <div className="p-4  flex-none border rounded-lg bg-neutral-50">
+              <div className="p-4 flex-none border rounded-lg bg-neutral-50">
                 <label
                   htmlFor="file-upload"
                   className="cursor-pointer flex items-center justify-center space-x-2"
@@ -316,7 +524,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
             </div>
           </div>
         </div>
-        <div className="pt-4  flex-col w-full flex   border-t mt-auto  items-center justify-between">
+        <div className="pt-4 flex-col w-full flex border-t mt-auto items-center justify-between">
           <div className="mb-4 font-medium text-lg text-text-dark">
             Total tokens: {calculateTokens()}
           </div>

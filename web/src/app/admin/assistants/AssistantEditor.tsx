@@ -841,9 +841,32 @@ export function AssistantEditor({
                     !(user?.role != "admin" && documentSets.length === 0) && (
                       <CollapsibleSection>
                         <div className="mt-2">
+                          <Label small>User Files</Label>
+                          <div>
+                            <SubLabel>
+                              <>
+                                Select which{" "}
+                                {!user || user.role === "admin" ? (
+                                  <Link
+                                    href="/admin/documents/sets"
+                                    className="font-semibold underline hover:underline text-text"
+                                    target="_blank"
+                                  >
+                                    Team Document Sets
+                                  </Link>
+                                ) : (
+                                  "Team Document Sets"
+                                )}{" "}
+                                this Assistant should use to inform its
+                                responses. If none are specified, the Assistant
+                                will reference all available documents.
+                              </>
+                            </SubLabel>
+                          </div>
+
                           {ccPairs.length > 0 && (
                             <>
-                              <Label small>Document Sets</Label>
+                              <Label small>Team Knowledge</Label>
                               <div>
                                 <SubLabel>
                                   <>
@@ -854,10 +877,10 @@ export function AssistantEditor({
                                         className="font-semibold underline hover:underline text-text"
                                         target="_blank"
                                       >
-                                        Document Sets
+                                        Team Document Sets
                                       </Link>
                                     ) : (
-                                      "Document Sets"
+                                      "Team Document Sets"
                                     )}{" "}
                                     this Assistant should use to inform its
                                     responses. If none are specified, the

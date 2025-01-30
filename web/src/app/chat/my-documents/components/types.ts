@@ -1,3 +1,5 @@
+import { FileResponse } from "../DocumentsContext";
+
 export interface UserFolder {
   id: number;
   name: string;
@@ -5,6 +7,12 @@ export interface UserFolder {
 }
 
 export interface UserFolder {
+  id: number;
+  name: string;
+  parent_folder_id: number | null;
+}
+
+export interface UserFile {
   id: number;
   name: string;
   parent_folder_id: number | null;
@@ -21,4 +29,7 @@ export interface FilePickerModalProps {
   onSave: (selectedItems: { files: number[]; folders: number[] }) => void;
   title: string;
   buttonContent: string;
+  selectedFiles: FileResponse[];
+  addSelectedFile: (file: FileResponse) => void;
+  removeSelectedFile: (file: FileResponse) => void;
 }

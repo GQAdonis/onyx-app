@@ -7,7 +7,6 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { useRouter } from "next/navigation";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 
 export interface FolderResponse {
