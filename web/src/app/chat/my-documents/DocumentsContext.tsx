@@ -62,6 +62,13 @@ interface DocumentsContextType {
   addToCollection: (documentId: string, collectionId: string) => Promise<void>;
   isLoading: boolean;
   uploadFile: (formData: FormData, folderId: number) => Promise<void>;
+  selectedFiles: FileResponse[];
+  selectedFolders: FolderResponse[];
+  addSelectedFile: (file: FileResponse) => void;
+  removeSelectedFile: (file: FileResponse) => void;
+  addSelectedFolder: (folder: FolderResponse) => void;
+  removeSelectedFolder: (folder: FolderResponse) => void;
+  clearSelectedItems: () => void;
 }
 
 const DocumentsContext = createContext<DocumentsContextType | undefined>(
@@ -78,6 +85,8 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     useState<MinimalOnyxDocument | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedFiles, setSelectedFiles] = useState<FileResponse[]>([]);
+  const [selectedFolders, setSelectedFolders] = useState<FolderResponse[]>([]);
 
   useEffect(() => {
     const fetchFolders = async () => {
@@ -277,6 +286,27 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     []
   );
 
+  const addSelectedFile = useCallback((file: FileResponse) => {
+    setSelectedFiles((prev) => [...prev, file]);
+  }, []);
+
+  const removeSelectedFile = useCallback((file: FileResponse) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== file.id));
+  }, []);
+
+  const addSelectedFolder = useCallback((folder: FolderResponse) => {
+    setSelectedFolders((prev) => [...prev, folder]);
+  }, []);
+
+  const removeSelectedFolder = useCallback((folder: FolderResponse) => {
+    setSelectedFolders((prev) => prev.filter((f) => f.id !== folder.id));
+  }, []);
+
+  const clearSelectedItems = useCallback(() => {
+    setSelectedFiles([]);
+    setSelectedFolders([]);
+  }, []);
+
   const value = {
     folders,
     currentFolder,
@@ -299,6 +329,13 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     addToCollection,
     isLoading,
     uploadFile,
+    selectedFiles,
+    selectedFolders,
+    addSelectedFile,
+    removeSelectedFile,
+    addSelectedFolder,
+    removeSelectedFolder,
+    clearSelectedItems,
   };
 
   return (

@@ -24,6 +24,7 @@ import Script from "next/script";
 import { LogoType } from "@/components/logo/Logo";
 import { Hanken_Grotesk } from "next/font/google";
 import { WebVitals } from "./web-vitals";
+import { DocumentsProvider } from "./chat/my-documents/DocumentsContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -203,11 +204,13 @@ export default async function RootLayout({
       hasAnyConnectors={hasAnyConnectors}
       hasImageCompatibleModel={hasImageCompatibleModel}
     >
-      <Suspense fallback={null}>
-        <PostHogPageView />
-      </Suspense>
-      {children}
-      {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
+      <DocumentsProvider>
+        <Suspense fallback={null}>
+          <PostHogPageView />
+        </Suspense>
+        {children}
+        {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
+      </DocumentsProvider>
     </AppProvider>
   );
 }

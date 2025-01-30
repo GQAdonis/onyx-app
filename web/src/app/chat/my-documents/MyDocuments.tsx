@@ -76,9 +76,8 @@ const SortSelector: React.FC<SortSelectorProps> = ({ onSortChange }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 text-sm text-neutral-600 hover:text-neutral-800 focus:outline-none"
       >
-        <SortIcon className="w-4 h-4" />
         <span>{currentSort}</span>
-        <ChevronDown className="w-4 h-4" />
+        <SortIcon className="w-4 h-4" />
       </button>
     </div>
   );

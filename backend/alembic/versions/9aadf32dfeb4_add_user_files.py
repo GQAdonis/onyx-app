@@ -65,6 +65,11 @@ def upgrade() -> None:
         ),
     )
 
+    op.add_column(
+        "connector_credential_pair",
+        sa.Column("is_user_file", sa.Boolean(), nullable=True),
+    )
+
 
 def downgrade() -> None:
     # Drop the persona__user_file table
@@ -73,3 +78,4 @@ def downgrade() -> None:
     op.drop_table("user_file")
     # Drop the user_folder table
     op.drop_table("user_folder")
+    op.drop_column("connector_credential_pair", "is_user_file")

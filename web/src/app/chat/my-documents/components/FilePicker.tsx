@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { Grid, List, UploadIcon, FolderIcon, FileIcon } from "lucide-react";
+import {
+  Grid,
+  List,
+  UploadIcon,
+  FolderIcon,
+  FileIcon,
+  PlusIcon,
+} from "lucide-react";
 import { SelectedItemsList } from "./SelectedItemsList";
-import { FilePickerModalProps } from "./types";
 import { Separator } from "@/components/ui/separator";
-import { useDocumentsContext } from "../DocumentsContext";
+import {
+  useDocumentsContext,
+  FolderResponse,
+  FileResponse,
+} from "../DocumentsContext";
 import {
   DndContext,
   closestCenter,
@@ -25,7 +35,6 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FolderResponse, FileResponse } from "../DocumentsContext";
 
 import {
   TooltipProvider,
@@ -57,7 +66,8 @@ const DraggableItem: React.FC<{
   type: "folder" | "file";
   item: FolderResponse | FileResponse;
   onClick?: () => void;
-}> = ({ id, type, item, onClick }) => {
+  isSelected: boolean;
+}> = ({ id, type, item, onClick, isSelected }) => {
   const {
     attributes,
     listeners,
@@ -81,6 +91,8 @@ const DraggableItem: React.FC<{
         <FilePickerFolderItem
           folder={item as FolderResponse}
           onClick={onClick || (() => {})}
+          onSelect={() => {}}
+          isSelected={isSelected}
         />
       </div>
     );
@@ -106,14 +118,16 @@ const DraggableItem: React.FC<{
 const FilePickerFolderItem: React.FC<{
   folder: FolderResponse;
   onClick: () => void;
-}> = ({ folder, onClick }) => {
+  onSelect: () => void;
+  isSelected: boolean;
+}> = ({ folder, onClick, onSelect, isSelected }) => {
   return (
     <div
       className="from-[#f2f0e8]/80 to-[#F7F6F0] border-0.5 border-border hover:from-[#f2f0e8] hover:to-[#F7F6F0] hover:border-border-200 text-md group relative flex cursor-pointer flex-col overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.99]"
       onClick={onClick}
     >
       <div className="flex flex-col flex-1">
-        <div className="font-tiempos flex items-center">
+        <div className="font-tiempos flex items-center justify-between">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -126,6 +140,17 @@ const FilePickerFolderItem: React.FC<{
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`ml-2 ${isSelected ? "text-blue-500" : "text-gray-500"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+          >
+            <PlusIcon size={16} />
+          </Button>
         </div>
         {folder.description && (
           <div className="text-text-400 mt-1 line-clamp-2 text-xs">
@@ -137,15 +162,32 @@ const FilePickerFolderItem: React.FC<{
   );
 };
 
+export interface FilePickerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  title: string;
+  buttonContent: string;
+  selectedFiles: FileResponse[];
+  selectedFolders: FolderResponse[];
+  addSelectedFile: (file: FileResponse) => void;
+  removeSelectedFile: (file: FileResponse) => void;
+  addSelectedFolder: (folder: FolderResponse) => void;
+  removeSelectedFolder: (folder: FolderResponse) => void;
+}
+
 export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   isOpen,
   onClose,
   onSave,
   title,
   buttonContent,
-  addSelectedFile,
   selectedFiles,
+  selectedFolders,
+  addSelectedFile,
   removeSelectedFile,
+  addSelectedFolder,
+  removeSelectedFolder,
 }) => {
   const {
     folders,
@@ -163,7 +205,6 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [links, setLinks] = useState<string[]>([]);
-  const [selectedFolders, setSelectedFolders] = useState<FolderResponse[]>([]);
 
   const [view, setView] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
@@ -210,18 +251,6 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     onClose();
   };
 
-  const handleRemoveSelectedItem = (type: "file" | "folder", id: number) => {
-    if (type === "file") {
-      removeSelectedFile(currentFolderFiles.find((f) => f.id === id)!);
-      // setSelectedFiles((prev) => prev.filter((file) => file.id !== id));
-    } else {
-      setSelectedFolders((prev) => prev.filter((folder) => folder.id !== id));
-    }
-  };
-
-  const handleRemoveUploadedFile = (name: string) => {
-    setUploadedFiles((prev) => prev.filter((file) => file.name !== name));
-  };
   const handleFolderClick = (folderId: number) => {
     console.log(`Folder clicked: ${folderId}`);
     setCurrentFolder(folderId);
@@ -235,9 +264,20 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     }
   };
 
-  const handleFileSelect = (fileId: number) => {
-    console.log(`File selected: ${fileId}`);
-    addSelectedFile(currentFolderFiles.find((f) => f.id === fileId)!);
+  const handleFileSelect = (file: FileResponse) => {
+    if (selectedFiles.some((f) => f.id === file.id)) {
+      removeSelectedFile(file);
+    } else {
+      addSelectedFile(file);
+    }
+  };
+
+  const handleFolderSelect = (folder: FolderResponse) => {
+    if (selectedFolders.some((f) => f.id === folder.id)) {
+      removeSelectedFolder(folder);
+    } else {
+      addSelectedFolder(folder);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -273,9 +313,6 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
         ? "folders"
         : "files";
       const activeId = parseInt(active.id.toString().split("-")[1], 10);
-
-      setSelectedFolders((prev) => [...prev]);
-      // setSelectedFiles((prev) => [...prev, activeId]);
 
       console.log(`Added ${activeType} with id ${activeId} to selected items`);
     } else {
@@ -398,12 +435,14 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                   <div className="mt-4 space-y-3">
                     {currentFolder === null
                       ? filteredFolders.map((folder) => (
-                          <DraggableItem
+                          <FilePickerFolderItem
                             key={`folder-${folder.id}`}
-                            id={`folder-${folder.id}`}
-                            type="folder"
-                            item={folder}
+                            folder={folder}
                             onClick={() => handleFolderClick(folder.id)}
+                            onSelect={() => handleFolderSelect(folder)}
+                            isSelected={selectedFolders.some(
+                              (f) => f.id === folder.id
+                            )}
                           />
                         ))
                       : currentFolderFiles.map((file) => (
@@ -412,7 +451,10 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                             id={`file-${file.id}`}
                             type="file"
                             item={file}
-                            onClick={() => handleFileSelect(file.id)}
+                            onClick={() => handleFileSelect(file)}
+                            isSelected={selectedFiles.some(
+                              (f) => f.id === file.id
+                            )}
                           />
                         ))}
                   </div>
@@ -434,6 +476,17 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                                 f.id === parseInt(activeId.split("-")[1], 10)
                             )!
                       }
+                      isSelected={
+                        activeId.startsWith("folder")
+                          ? selectedFolders.some(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )
+                          : selectedFiles.some(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )
+                      }
                     />
                   ) : null}
                 </DragOverlay>
@@ -449,15 +502,10 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
           >
             <div className="shrink flex h-full overflow-y-auto mb-1">
               <SelectedItemsList
-                links={links}
                 folders={selectedFolders}
                 files={selectedFiles}
-                // selectedItems={selectedItems}
-                allFolders={folders}
-                allFiles={currentFolderFiles}
-                uploadedFiles={uploadedFiles}
-                onRemove={handleRemoveSelectedItem}
-                onRemoveUploadedFile={handleRemoveUploadedFile}
+                onRemoveFile={removeSelectedFile}
+                onRemoveFolder={removeSelectedFolder}
               />
             </div>
 
@@ -526,13 +574,16 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
         </div>
         <div className="pt-4 flex-col w-full flex border-t mt-auto items-center justify-between">
           <div className="mb-4 font-medium text-lg text-text-dark">
-            Total tokens: {calculateTokens()}
+            Total items: {selectedFiles.length + selectedFolders.length}
           </div>
           <div className="flex justify-center">
             <Button
               className="text-lg"
               size="lg"
-              onClick={handleSave}
+              onClick={() => {
+                onSave();
+                onClose();
+              }}
               variant="default"
             >
               {buttonContent}

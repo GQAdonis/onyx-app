@@ -111,11 +111,18 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   }
 
   if (!folderDetails) {
-    return <div>No folder details found.</div>;
+    return (
+      <div className="min-h-full w-full min-w-0 flex-1 mx-auto mt-[115px] max-w-5xl px-4 pb-20 md:pl-8 lg:mt-6 md:pr-8 2xl:pr-14">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </div>
+      </div>
+    );
   }
-  // if (isLoading) {
-  //   return <div>Loading...</div>;
-  // }
 
   const totalTokens = folderDetails.files.length * 1000; // Mock data: assume 1000 tokens per file
   const maxTokens = 10000; // Mock data: max tokens for the model

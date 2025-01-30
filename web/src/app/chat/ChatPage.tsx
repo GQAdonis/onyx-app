@@ -114,6 +114,13 @@ import AssistantModal from "../assistants/mine/AssistantModal";
 import { getSourceMetadata } from "@/lib/sources";
 import { UserSettingsModal } from "./modal/UserSettingsModal";
 import { FilePickerModal } from "./my-documents/components/FilePicker";
+import {
+  useDocumentsContext,
+  FileResponse,
+  FolderResponse,
+} from "./my-documents/DocumentsContext";
+import { SourceMetadata } from "@/lib/search/interfaces";
+import { ValidSources } from "@/lib/types";
 
 const TEMP_USER_MESSAGE_ID = -1;
 const TEMP_ASSISTANT_MESSAGE_ID = -2;
@@ -319,9 +326,14 @@ export function ChatPage({
 
   const noAssistants = liveAssistant == null || liveAssistant == undefined;
 
-  const availableSources = ccPairs.map((ccPair) => ccPair.source);
-  const uniqueSources = Array.from(new Set(availableSources));
-  const sources = uniqueSources.map((source) => getSourceMetadata(source));
+  const availableSources: ValidSources[] = useMemo(() => {
+    return ccPairs.map((ccPair) => ccPair.source);
+  }, [ccPairs]);
+
+  const sources: SourceMetadata[] = useMemo(() => {
+    const uniqueSources = Array.from(new Set(availableSources));
+    return uniqueSources.map((source) => getSourceMetadata(source));
+  }, [availableSources]);
 
   // always set the model override for the chat session, when an assistant, llm provider, or user preference exists
   useEffect(() => {
@@ -810,15 +822,15 @@ export function ChatPage({
     }
   }, [submittedMessage, currentSessionChatState]);
 
-  const [
+  const {
     selectedFiles,
+    selectedFolders,
     addSelectedFile,
     removeSelectedFile,
-    selectedDocuments,
-    toggleDocumentSelection,
-    clearSelectedDocuments,
-    selectedDocumentTokens,
-  ] = useDocumentSelection();
+    addSelectedFolder,
+    removeSelectedFolder,
+    clearSelectedItems,
+  } = useDocumentsContext();
   // just choose a conservative default, this will be updated in the
   // background on initial load / on persona change
   const [maxTokens, setMaxTokens] = useState<number>(4096);
@@ -1285,6 +1297,7 @@ export function ChatPage({
           .map((document) => document.db_doc_id as number),
         queryOverride,
         forceSearch,
+        userFolderDescriptors: selectedFolders.map((folder) => folder.id),
         userFileDescriptors: selectedFiles.map((file) => file.id),
         regenerate: regenerationRequest !== undefined,
         modelProvider:
@@ -2004,6 +2017,33 @@ export function ChatPage({
       </>
     );
 
+  const [selectedDocuments, setSelectedDocuments] = useState<OnyxDocument[]>(
+    []
+  );
+  const [selectedDocumentTokens, setSelectedDocumentTokens] = useState(0);
+
+  const clearSelectedDocuments = () => {
+    setSelectedDocuments([]);
+    setSelectedDocumentTokens(0);
+    clearSelectedItems();
+  };
+
+  const toggleDocumentSelection = (document: OnyxDocument) => {
+    setSelectedDocuments((prev) =>
+      prev.some((d) => d.document_id === document.document_id)
+        ? prev.filter((d) => d.document_id !== document.document_id)
+        : [...prev, document]
+    );
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    // Implement file upload logic here
+    // After successful upload, you might want to add the file to selected files
+    // For example:
+    // const uploadedFile = await uploadFile(files[0]);
+    // addSelectedFile(uploadedFile);
+  };
+
   return (
     <>
       <HealthCheckBanner />
@@ -2080,13 +2120,16 @@ export function ChatPage({
           buttonContent="Set as Context"
           title="User Documents"
           isOpen={true}
-          selectedFiles={selectedFiles}
           onClose={() => setToggleDocSelection(false)}
           onSave={() => {
             setToggleDocSelection(false);
           }}
+          selectedFiles={selectedFiles}
+          selectedFolders={selectedFolders}
           addSelectedFile={addSelectedFile}
           removeSelectedFile={removeSelectedFile}
+          addSelectedFolder={addSelectedFolder}
+          removeSelectedFolder={removeSelectedFolder}
         />
       )}
 
@@ -2770,39 +2813,35 @@ export function ChatPage({
                               </div>
                             )}
                             <ChatInputBar
-                              selectedFiles={selectedFiles}
-                              removeSelectedFile={removeSelectedFile}
-                              toggleDocSelection={() => {
-                                setToggleDocSelection(true);
-                              }}
-                              toggleDocumentSidebar={toggleDocumentSidebar}
-                              availableSources={sources}
-                              availableDocumentSets={documentSets}
-                              availableTags={tags}
-                              filterManager={filterManager}
-                              llmOverrideManager={llmOverrideManager}
-                              removeDocs={() => {
-                                clearSelectedDocuments();
-                              }}
-                              retrievalEnabled={retrievalEnabled}
+                              toggleDocSelection={() =>
+                                setToggleDocSelection(true)
+                              }
+                              removeDocs={clearSelectedItems}
                               showConfigureAPIKey={() =>
                                 setShowApiKeyModal(true)
                               }
-                              chatState={currentSessionChatState}
-                              stopGenerating={stopGenerating}
                               selectedDocuments={selectedDocuments}
-                              // assistant stuff
-                              selectedAssistant={liveAssistant}
-                              setAlternativeAssistant={setAlternativeAssistant}
-                              alternativeAssistant={alternativeAssistant}
-                              // end assistant stuff
                               message={message}
                               setMessage={setMessage}
+                              stopGenerating={stopGenerating}
                               onSubmit={onSubmit}
+                              llmOverrideManager={llmOverrideManager}
+                              chatState={currentSessionChatState}
+                              alternativeAssistant={alternativeAssistant}
+                              selectedAssistant={
+                                selectedAssistant || finalAssistants[0]
+                              }
+                              setAlternativeAssistant={setAlternativeAssistant}
+                              toggleDocumentSidebar={toggleDocumentSidebar}
                               files={currentMessageFiles}
                               setFiles={setCurrentMessageFiles}
-                              handleFileUpload={handleImageUpload}
+                              handleFileUpload={handleFileUpload}
                               textAreaRef={textAreaRef}
+                              filterManager={filterManager}
+                              availableSources={sources}
+                              availableDocumentSets={documentSets}
+                              availableTags={tags}
+                              retrievalEnabled={retrievalEnabled}
                             />
                             {enterpriseSettings &&
                               enterpriseSettings.custom_lower_disclaimer_content && (

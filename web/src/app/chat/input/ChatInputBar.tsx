@@ -26,7 +26,7 @@ import { Hoverable } from "@/components/Hoverable";
 import { ChatState } from "../types";
 import UnconfiguredProviderText from "@/components/chat_search/UnconfiguredProviderText";
 import { useAssistants } from "@/components/context/AssistantsContext";
-import { CalendarIcon, TagIcon, XIcon } from "lucide-react";
+import { CalendarIcon, TagIcon, XIcon, FolderIcon } from "lucide-react";
 import { FilterPopup } from "@/components/search/filtering/FilterPopup";
 import { DocumentSet, Tag } from "@/lib/types";
 import { SourceIcon } from "@/components/SourceIcon";
@@ -34,7 +34,7 @@ import { getFormattedDateRangeString } from "@/lib/dateUtils";
 import { truncateString } from "@/lib/utils";
 import { buildImgUrl } from "../files/images/utils";
 import { useUser } from "@/components/user/UserProvider";
-import { FileResponse } from "../my-documents/DocumentsContext";
+import { useDocumentsContext } from "../my-documents/DocumentsContext";
 
 const MAX_INPUT_HEIGHT = 200;
 
@@ -89,9 +89,7 @@ export const SourceChip = ({
 interface ChatInputBarProps {
   toggleDocSelection: () => void;
   removeDocs: () => void;
-  removeSelectedFile: (file: FileResponse) => void;
   showConfigureAPIKey: () => void;
-  selectedFiles: FileResponse[];
   selectedDocuments: OnyxDocument[];
   message: string;
   setMessage: (message: string) => void;
@@ -123,14 +121,12 @@ export function ChatInputBar({
   filterManager,
   showConfigureAPIKey,
   selectedDocuments,
-  selectedFiles,
   message,
   setMessage,
   stopGenerating,
   onSubmit,
   chatState,
 
-  removeSelectedFile,
   // assistants
   selectedAssistant,
   setAlternativeAssistant,
@@ -146,6 +142,13 @@ export function ChatInputBar({
   llmOverrideManager,
 }: ChatInputBarProps) {
   const { user } = useUser();
+  const {
+    selectedFiles,
+    selectedFolders,
+    removeSelectedFile,
+    removeSelectedFolder,
+  } = useDocumentsContext();
+
   useEffect(() => {
     const textarea = textAreaRef.current;
     if (textarea) {
@@ -537,6 +540,7 @@ export function ChatInputBar({
 
             {(selectedDocuments.length > 0 ||
               selectedFiles.length > 0 ||
+              selectedFolders.length > 0 ||
               files.length > 0 ||
               filterManager.timeRange ||
               filterManager.selectedDocumentSets.length > 0 ||
@@ -560,15 +564,23 @@ export function ChatInputBar({
                       />
                     ))}
 
-                  {selectedFiles.length > 0 &&
-                    selectedFiles.map((file) => (
-                      <SourceChip
-                        key={file.id}
-                        icon={<FileIcon size={16} />}
-                        title={file.name}
-                        onRemove={() => removeSelectedFile(file)}
-                      />
-                    ))}
+                  {selectedFiles.map((file) => (
+                    <SourceChip
+                      key={file.id}
+                      icon={<FileIcon size={16} />}
+                      title={file.name}
+                      onRemove={() => removeSelectedFile(file)}
+                    />
+                  ))}
+
+                  {selectedFolders.map((folder) => (
+                    <SourceChip
+                      key={folder.id}
+                      icon={<FolderIcon size={16} />}
+                      title={folder.name}
+                      onRemove={() => removeSelectedFolder(folder)}
+                    />
+                  ))}
 
                   {filterManager.timeRange && (
                     <SourceChip
@@ -679,18 +691,6 @@ export function ChatInputBar({
                   Icon={FiPlusCircle}
                   onClick={() => {
                     toggleDocSelection();
-                    // const input = document.createElement("input");
-                    // input.type = "file";
-                    // input.multiple = true;
-                    // input.onchange = (event: any) => {
-                    //   const files = Array.from(
-                    //     event?.target?.files || []
-                    //   ) as File[];
-                    //   if (files.length > 0) {
-                    //     handleFileUpload(files);
-                    //   }
-                    // };
-                    // input.click();
                   }}
                   tooltipContent={"Upload files"}
                 />

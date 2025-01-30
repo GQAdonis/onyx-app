@@ -762,22 +762,7 @@ export function AssistantEditor({
               <div className="w-full max-w-4xl">
                 <div className="flex flex-col">
                   <Separator />
-                  <div className="flex gap-x-2 py-2 flex justify-start">
-                    <div>
-                      <div className="flex items-center gap-x-2">
-                        <p className="block font-medium text-sm">
-                          My Documents
-                        </p>
-                        <Button
-                          className="!p-.5 text-xs"
-                          type="button"
-                          onClick={() => setFilePickerModalOpen(true)}
-                        >
-                          Attach Files and Folders
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+
                   {searchTool && (
                     <>
                       <Separator />
@@ -842,6 +827,13 @@ export function AssistantEditor({
                       <CollapsibleSection>
                         <div className="mt-2">
                           <Label small>User Files</Label>
+                          <Button
+                            className="!p-.5 text-xs"
+                            type="button"
+                            onClick={() => setFilePickerModalOpen(true)}
+                          >
+                            Attach Files and Folders
+                          </Button>
                           <div>
                             <SubLabel>
                               <>

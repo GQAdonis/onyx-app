@@ -27,3 +27,7 @@ def create_user_files(
         db_session.add(new_file)
     db_session.commit()
     return upload_response
+
+
+def get_user_files_from_folder(folder_id: int, db_session: Session) -> list[UserFile]:
+    return db_session.query(UserFile).filter(UserFile.folder_id == folder_id).all()
