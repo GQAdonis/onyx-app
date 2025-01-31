@@ -22,6 +22,10 @@ from onyx.db.models import User
 from onyx.db.models import UserFile
 from onyx.db.models import UserFolder
 from onyx.db.user_documents import create_user_files
+from onyx.db.user_documents import share_file_with_assistant
+from onyx.db.user_documents import share_folder_with_assistant
+from onyx.db.user_documents import unshare_file_with_assistant
+from onyx.db.user_documents import unshare_folder_with_assistant
 from onyx.server.documents.models import ConnectorBase
 from onyx.server.documents.models import CredentialBase
 from onyx.server.documents.models import FileUploadResponse
@@ -243,8 +247,7 @@ def get_file_system(
 ) -> list[FolderResponse]:
     user_id = user.id if user else None
     folders = db_session.query(UserFolder).filter(UserFolder.user_id == user_id).all()
-    # files = db_session.query(UserFile).filter(UserFile.user_id == user_id).all()
-    return ([FolderResponse.from_model(folder) for folder in folders],)
+    return [FolderResponse.from_model(folder) for folder in folders]
 
 
 @router.put("/user/file/{file_id}/rename")
@@ -265,3 +268,91 @@ def rename_file(
     file.name = name
     db_session.commit()
     return FileResponse.from_model(file)
+
+
+class ShareRequest(BaseModel):
+    assistant_id: int
+
+
+@router.post("/user/file/{file_id}/share")
+def share_file(
+    file_id: int,
+    request: ShareRequest,
+    user: User = Depends(current_user),
+    db_session: Session = Depends(get_session),
+) -> MessageResponse:
+    user_id = user.id if user else None
+    file = (
+        db_session.query(UserFile)
+        .filter(UserFile.id == file_id, UserFile.user_id == user_id)
+        .first()
+    )
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    share_file_with_assistant(file_id, request.assistant_id, db_session)
+    return MessageResponse(message="File shared successfully with the assistant")
+
+
+@router.post("/user/file/{file_id}/unshare")
+def unshare_file(
+    file_id: int,
+    request: ShareRequest,
+    user: User = Depends(current_user),
+    db_session: Session = Depends(get_session),
+) -> MessageResponse:
+    user_id = user.id if user else None
+    file = (
+        db_session.query(UserFile)
+        .filter(UserFile.id == file_id, UserFile.user_id == user_id)
+        .first()
+    )
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    unshare_file_with_assistant(file_id, request.assistant_id, db_session)
+    return MessageResponse(message="File unshared successfully from the assistant")
+
+
+@router.post("/user/folder/{folder_id}/share")
+def share_folder(
+    folder_id: int,
+    request: ShareRequest,
+    user: User = Depends(current_user),
+    db_session: Session = Depends(get_session),
+) -> MessageResponse:
+    user_id = user.id if user else None
+    folder = (
+        db_session.query(UserFolder)
+        .filter(UserFolder.id == folder_id, UserFolder.user_id == user_id)
+        .first()
+    )
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    share_folder_with_assistant(folder_id, request.assistant_id, db_session)
+    return MessageResponse(
+        message="Folder and its files shared successfully with the assistant"
+    )
+
+
+@router.post("/user/folder/{folder_id}/unshare")
+def unshare_folder(
+    folder_id: int,
+    request: ShareRequest,
+    user: User = Depends(current_user),
+    db_session: Session = Depends(get_session),
+) -> MessageResponse:
+    user_id = user.id if user else None
+    folder = (
+        db_session.query(UserFolder)
+        .filter(UserFolder.id == folder_id, UserFolder.user_id == user_id)
+        .first()
+    )
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    unshare_folder_with_assistant(folder_id, request.assistant_id, db_session)
+    return MessageResponse(
+        message="Folder and its files unshared successfully from the assistant"
+    )

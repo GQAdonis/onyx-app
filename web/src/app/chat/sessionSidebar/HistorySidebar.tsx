@@ -325,7 +325,7 @@ export const HistorySidebar = forwardRef<HTMLDivElement, HistorySidebarProps>(
                   className="flex-none text-text-history-sidebar-button"
                 />
                 <p className="my-auto flex font-normal items-center text-base">
-                  My Documents
+                  My Knowledge Groups
                 </p>
               </Link>
               {user?.preferences?.shortcut_enabled && (

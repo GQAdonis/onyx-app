@@ -136,7 +136,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
             className="flex text-sm mb-4 items-center cursor-pointer"
             onClick={handleBack}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to My Documents
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to My Knowledge Groups
           </div>
 
           <h1 className="text-2xl text-text font-bold mb-2">
@@ -167,12 +167,6 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
               className="flex items-center justify-between"
               onClick={() => setIsCapacityOpen(!isCapacityOpen)}
             >
-              <div className="flex items-center">
-                <Database className="w-5 h-4 mr-3 text-[#13343a]" />
-                <span className="text-[#13343a] text-sm font-medium leading-tight">
-                  Knowledge Capacity
-                </span>
-              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -185,6 +179,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
                 )}
               </Button>
             </div>
+
             {isCapacityOpen && (
               <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
                 <div className="mb-1">

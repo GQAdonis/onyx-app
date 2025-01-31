@@ -73,7 +73,7 @@ import {
   Option as DropdownOption,
 } from "@/components/Dropdown";
 import { SourceChip } from "@/app/chat/input/ChatInputBar";
-import { TagIcon, UserIcon, XIcon } from "lucide-react";
+import { TagIcon, UserIcon, XIcon, FileIcon, FolderIcon } from "lucide-react";
 import { LLMSelector } from "@/components/llm/LLMSelector";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -81,6 +81,12 @@ import { DeleteEntityModal } from "@/components/modals/DeleteEntityModal";
 import { DeletePersonaButton } from "./[id]/DeletePersonaButton";
 import Title from "@/components/ui/title";
 import { FilePickerModal } from "@/app/chat/my-documents/components/FilePicker";
+import { useDocumentsContext } from "@/app/chat/my-documents/DocumentsContext";
+import {
+  FileResponse,
+  FolderResponse,
+} from "@/app/chat/my-documents/DocumentsContext";
+import { shareFiles, shareFolders } from "./assistantFileUtils";
 
 function findSearchTool(tools: ToolSnapshot[]) {
   return tools.find((tool) => tool.in_code_tool_id === "SearchTool");
@@ -220,6 +226,16 @@ export function AssistantEditor({
     enabledToolsMap[tool.id] = personaCurrentToolIds.includes(tool.id);
   });
 
+  const {
+    selectedFiles,
+    selectedFolders,
+    addSelectedFile,
+    removeSelectedFile,
+    addSelectedFolder,
+    removeSelectedFolder,
+    clearSelectedItems,
+  } = useDocumentsContext();
+
   const initialValues = {
     name: existingPersona?.name ?? "",
     description: existingPersona?.description ?? "",
@@ -258,6 +274,10 @@ export function AssistantEditor({
         (u) => u.id !== existingPersona.owner?.id
       ) ?? [],
     selectedGroups: existingPersona?.groups ?? [],
+    selectedFiles: [] as FileResponse[],
+    selectedFolders: [] as FolderResponse[],
+    user_file_ids: existingPersona?.user_file_ids ?? [],
+    user_folder_ids: existingPersona?.user_folder_ids ?? [],
   };
 
   interface AssistantPrompt {
@@ -353,6 +373,12 @@ export function AssistantEditor({
       )}
       {filePickerModalOpen && (
         <FilePickerModal
+          selectedFiles={selectedFiles}
+          selectedFolders={selectedFolders}
+          addSelectedFile={addSelectedFile}
+          removeSelectedFile={removeSelectedFile}
+          addSelectedFolder={addSelectedFolder}
+          removeSelectedFolder={removeSelectedFolder}
           isOpen={filePickerModalOpen}
           onClose={() => {
             setFilePickerModalOpen(false);
@@ -496,9 +522,12 @@ export function AssistantEditor({
               ? new Date(values.search_start_date)
               : null,
             num_chunks: numChunks,
+            user_file_ids: values.selectedFiles.map((file) => file.id),
+            user_folder_ids: values.selectedFolders.map((folder) => folder.id),
           };
 
           let personaResponse;
+
           if (isUpdate) {
             personaResponse = await updatePersona(
               existingPersona.id,
@@ -1392,6 +1421,64 @@ export function AssistantEditor({
                   </div>
                 </>
               )}
+
+              <div className="w-full max-w-4xl">
+                <Separator />
+                <div className="flex gap-x-2 py-2 flex justify-start">
+                  <div>
+                    <div className="flex items-start gap-x-2">
+                      <p className="block font-medium text-sm">User Files</p>
+                      <Button
+                        className="!p-.5 text-xs"
+                        type="button"
+                        onClick={() => setFilePickerModalOpen(true)}
+                      >
+                        Attach Files and Folders
+                      </Button>
+                    </div>
+                    <p
+                      className="text-sm text-subtle"
+                      style={{ color: "rgb(113, 114, 121)" }}
+                    >
+                      Select files and folders to attach to this assistant
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {values.selectedFiles.map((file: FileResponse) => (
+                    <SourceChip
+                      key={file.id}
+                      onRemove={() => {
+                        removeSelectedFile(file);
+                        setFieldValue(
+                          "selectedFiles",
+                          values.selectedFiles.filter(
+                            (f: FileResponse) => f.id !== file.id
+                          )
+                        );
+                      }}
+                      title={file.name}
+                      icon={<FileIcon size={12} />}
+                    />
+                  ))}
+                  {values.selectedFolders.map((folder: FolderResponse) => (
+                    <SourceChip
+                      key={folder.id}
+                      onRemove={() => {
+                        removeSelectedFolder(folder);
+                        setFieldValue(
+                          "selectedFolders",
+                          values.selectedFolders.filter(
+                            (f: FolderResponse) => f.id !== folder.id
+                          )
+                        );
+                      }}
+                      title={folder.name}
+                      icon={<FolderIcon size={12} />}
+                    />
+                  ))}
+                </div>
+              </div>
 
               <div className="mt-12 gap-x-2 w-full  justify-end flex">
                 <Button

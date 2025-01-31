@@ -1570,6 +1570,11 @@ class Persona(Base):
         secondary="persona__user_file",
         back_populates="assistants",
     )
+    user_folders: Mapped[list["UserFolder"]] = relationship(
+        "UserFolder",
+        secondary="persona__user_folder",
+        back_populates="assistants",
+    )
     labels: Mapped[list["PersonaLabel"]] = relationship(
         "PersonaLabel",
         secondary=Persona__PersonaLabel.__table__,

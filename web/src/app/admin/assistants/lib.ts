@@ -56,6 +56,8 @@ export interface PersonaUpsertParameters {
   uploaded_image: File | null;
   is_default_persona: boolean;
   label_ids: number[] | null;
+  user_file_ids: number[];
+  user_folder_ids: number[];
 }
 
 export const createPersonaLabel = (name: string) => {

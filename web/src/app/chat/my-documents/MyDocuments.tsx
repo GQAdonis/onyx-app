@@ -230,11 +230,11 @@ export default function MyDocuments() {
     <div className="min-h-full w-full min-w-0 flex-1 mx-auto mt-4 w-full max-w-5xl flex-1 px-4 pb-20 md:pl-8 lg:mt-6 md:pr-8 2xl:pr-14">
       <header className="flex bg-background w-full items-center justify-between gap-4  pt-2  -translate-y-px">
         <h1 className=" flex items-center gap-1.5 text-lg font-medium leading-tight tracking-tight max-md:hidden">
-          My Documents
+          My Knowledge Groups
         </h1>
         <div className="flex items-center gap-2">
           <CreateEntityModal
-            title="Create New Folder"
+            title="Create New Knowledge Group"
             entityName="Folder"
             onSubmit={handleCreateFolder}
             trigger={

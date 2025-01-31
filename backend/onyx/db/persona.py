@@ -307,6 +307,8 @@ def get_personas_for_user(
             joinedload(Persona.document_sets),
             joinedload(Persona.groups),
             joinedload(Persona.users),
+            joinedload(Persona.user_files),
+            joinedload(Persona.user_folders),
         )
 
     return db_session.execute(stmt).unique().scalars().all()
