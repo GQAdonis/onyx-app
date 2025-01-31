@@ -41,7 +41,7 @@ interface FetchChatDataResult {
   folders: Folder[];
   openedFolders: Record<string, boolean>;
   defaultAssistantId?: number;
-  toggleSidebar: boolean;
+  sidebarInitiallyVisible: boolean;
   finalDocumentSidebarInitialWidth?: number;
   shouldShowWelcomeModal: boolean;
   inputPrompts: InputPrompt[];
@@ -176,7 +176,7 @@ export async function fetchChatData(searchParams: {
   const sidebarToggled = requestCookies.get(SIDEBAR_TOGGLED_COOKIE_NAME);
 
   // IF user is an anoymous user, we don't want to show the sidebar (they have no access to chat history)
-  const toggleSidebar =
+  const sidebarInitiallyVisible =
     !user?.is_anonymous_user &&
     (sidebarToggled
       ? sidebarToggled.value.toLocaleLowerCase() == "true" || false
@@ -224,7 +224,7 @@ export async function fetchChatData(searchParams: {
     openedFolders,
     defaultAssistantId,
     finalDocumentSidebarInitialWidth,
-    toggleSidebar,
+    sidebarInitiallyVisible,
     shouldShowWelcomeModal,
     inputPrompts,
   };

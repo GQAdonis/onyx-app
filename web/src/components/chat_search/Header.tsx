@@ -17,7 +17,7 @@ export default function FunctionalHeader({
   currentChatSession,
   setSharingModalVisible,
   toggleSidebar = () => null,
-  documentSidebarToggled,
+  documentSidebarVisible,
   reset = () => null,
   sidebarToggled,
   toggleUserSettings,
@@ -31,7 +31,7 @@ export default function FunctionalHeader({
   toggleSidebar?: () => void;
   toggleUserSettings?: () => void;
   hideUserDropdown?: boolean;
-  documentSidebarToggled?: boolean;
+  documentSidebarVisible?: boolean;
 }) {
   const settings = useContext(SettingsContext);
   useEffect(() => {
@@ -98,19 +98,19 @@ export default function FunctionalHeader({
               className={`
             absolute
             ${
-              documentSidebarToggled &&
+              documentSidebarVisible &&
               sidebarToggled &&
               "left-[calc(50%-75px)]"
             }
             ${
-              documentSidebarToggled && !sidebarToggled
+              documentSidebarVisible && !sidebarToggled
                 ? "left-[calc(50%-175px)]"
-                : !documentSidebarToggled && sidebarToggled
+                : !documentSidebarVisible && sidebarToggled
                   ? "left-[calc(50%+100px)]"
                   : "left-1/2"
             }
             ${
-              documentSidebarToggled || sidebarToggled
+              documentSidebarVisible || sidebarToggled
                 ? "mobile:w-[40vw] max-w-[40vw]"
                 : "mobile:w-[50vw] max-w-[60vw]"
             }
@@ -131,14 +131,14 @@ export default function FunctionalHeader({
           {/* <div
             className={`absolute 
               ${
-                documentSidebarToggled && !sidebarToggled
+                documentSidebarVisible && !sidebarToggled
                   ? "left-[calc(50%-125px)]"
-                  : !documentSidebarToggled && sidebarToggled
+                  : !documentSidebarVisible && sidebarToggled
                     ? "left-[calc(50%+125px)]"
                     : "left-1/2"
               }
               ${
-                documentSidebarToggled || sidebarToggled
+                documentSidebarVisible || sidebarToggled
                   ? "mobile:w-[40vw] max-w-[50vw]"
                   : "mobile:w-[50vw] max-w-[60vw]"
               }
@@ -213,7 +213,7 @@ export default function FunctionalHeader({
             duration-300 
             ease-in-out
             h-full
-            ${documentSidebarToggled ? "w-[400px]" : "w-[0px]"}
+            ${documentSidebarVisible ? "w-[400px]" : "w-[0px]"}
             `}
             />
           </div>

@@ -12,15 +12,15 @@ export default function WrappedChat({
   // we don't want to show the sidebar by default when the user opens the side panel
   defaultSidebarOff?: boolean;
 }) {
-  const { toggledSidebar } = useChatContext();
+  const { sidebarInitiallyVisible } = useChatContext();
 
   return (
     <FunctionalWrapper
-      initiallyToggled={toggledSidebar && !defaultSidebarOff}
-      content={(toggledSidebar, toggle) => (
+      sidebarInitiallyVisible={sidebarInitiallyVisible && !defaultSidebarOff}
+      content={(sidebarVisible, toggle) => (
         <ChatPage
           toggle={toggle}
-          toggledSidebar={toggledSidebar}
+          sidebarVisible={sidebarVisible}
           firstMessage={firstMessage}
         />
       )}
