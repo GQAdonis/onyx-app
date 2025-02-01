@@ -49,6 +49,7 @@ from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import TENANT_ID_PREFIX
 from shared_configs.contextvars import current_tenant_id
+from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -245,7 +246,7 @@ def get_all_tenant_ids() -> list[str] | list[None]:
     if not MULTI_TENANT:
         return [None]
 
-    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as session:
+    with get_session_with_shared_schema() as session:
         result = session.execute(
             text(
                 f"""
@@ -403,28 +404,33 @@ async def get_async_session_with_tenant(
 
 
 @contextmanager
-def get_session_with_default_tenant() -> Generator[Session, None, None]:
-    with get_session_with_tenant(current_tenant_id()) as session:
+def get_session_with_current_tenant(
+    # NOTE: this argument will be removed in the future
+    tenant_id: str
+    | None = None,
+) -> Generator[Session, None, None]:
+    if tenant_id is None:
+        tenant_id = current_tenant_id()
+
+    with get_session_with_tenant(tenant_id) as session:
         yield session
 
 
 @contextmanager
-def get_session_with_tenant(
-    tenant_id: str | None = None,
-) -> Generator[Session, None, None]:
+def get_session_with_shared_schema() -> Generator[Session, None, None]:
+    token = CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA)
+    with get_session_with_tenant(POSTGRES_DEFAULT_SCHEMA) as session:
+        yield session
+    CURRENT_TENANT_ID_CONTEXTVAR.reset(token)
+
+
+@contextmanager
+def get_session_with_tenant(tenant_id: str) -> Generator[Session, None, None]:
     """
     Generate a database session for a specific tenant.
-    This function:
-    1. Sets the database schema to the specified tenant's schema.
-    2. Preserves the tenant ID across the session.
-    3. Reverts to the previous tenant ID after the session is closed.
-    4. Uses the default schema if no tenant ID is provided.
     """
 
     engine = get_sqlalchemy_engine()
-
-    if not tenant_id:
-        tenant_id = current_tenant_id()
 
     event.listen(engine, "checkout", set_search_path_on_checkout)
 
@@ -468,7 +474,7 @@ def set_search_path_on_checkout(
 
 def get_session_generator_with_tenant() -> Generator[Session, None, None]:
     tenant_id = current_tenant_id()
-    with get_session_with_tenant(tenant_id) as session:
+    with get_session_with_current_tenant(tenant_id) as session:
         yield session
 
 

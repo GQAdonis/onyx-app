@@ -35,7 +35,7 @@ from onyx.configs.constants import OnyxCeleryTask
 from onyx.configs.constants import OnyxRedisLocks
 from onyx.db.connector import mark_cc_pair_as_external_group_synced
 from onyx.db.connector_credential_pair import get_connector_credential_pair_from_id
-from onyx.db.engine import get_session_with_tenant
+from onyx.db.engine import get_session_with_current_tenant
 from onyx.db.enums import AccessType
 from onyx.db.enums import ConnectorCredentialPairStatus
 from onyx.db.enums import SyncStatus
@@ -124,7 +124,7 @@ def check_for_external_group_sync(self: Task, *, tenant_id: str | None) -> bool 
 
     try:
         cc_pair_ids_to_sync: list[int] = []
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             cc_pairs = get_all_auto_sync_cc_pairs(db_session)
 
             # We only want to sync one cc_pair per source type in
@@ -236,7 +236,7 @@ def try_creating_external_group_sync_task(
 
         # create before setting fence to avoid race condition where the monitoring
         # task updates the sync record before it is created
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             insert_sync_record(
                 db_session=db_session,
                 entity_id=cc_pair_id,
@@ -333,7 +333,7 @@ def connector_external_group_sync_generator_task(
         payload.started = datetime.now(timezone.utc)
         redis_connector.external_group_sync.set_fence(payload)
 
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             cc_pair = get_connector_credential_pair_from_id(
                 db_session=db_session,
                 cc_pair_id=cc_pair_id,
@@ -384,7 +384,7 @@ def connector_external_group_sync_generator_task(
             f"Failed to run external group sync: cc_pair={cc_pair_id}"
         )
 
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             update_sync_record_status(
                 db_session=db_session,
                 entity_id=cc_pair_id,
@@ -419,7 +419,7 @@ def validate_external_group_sync_fences(
         count=SCAN_ITER_COUNT_DEFAULT,
     ):
         lock_beat.reacquire()
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             validate_external_group_sync_fence(
                 tenant_id,
                 key_bytes,

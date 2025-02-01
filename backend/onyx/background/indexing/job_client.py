@@ -15,6 +15,9 @@ from typing import Optional
 from onyx.configs.constants import POSTGRES_CELERY_WORKER_INDEXING_CHILD_APP_NAME
 from onyx.db.engine import SqlEngine
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
+from shared_configs.configs import TENANT_ID_PREFIX
+from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -55,10 +58,18 @@ def _initializer(
     return func(*args, **kwargs)
 
 
-def _run_in_process(
-    func: Callable, args: list | tuple, kwargs: dict[str, Any] | None = None
-) -> None:
-    _initializer(func, args, kwargs)
+def _run_in_process(func: Callable, args: tuple) -> None:
+    # We currently assume the last argument is always the tenant_id
+    tenant_id = args[-1]
+    valid_tenant = (
+        tenant_id
+        and isinstance(tenant_id, str)
+        and tenant_id.startswith(TENANT_ID_PREFIX)
+    )
+    CURRENT_TENANT_ID_CONTEXTVAR.set(
+        tenant_id if valid_tenant else POSTGRES_DEFAULT_SCHEMA
+    )
+    func(*args)
 
 
 @dataclass

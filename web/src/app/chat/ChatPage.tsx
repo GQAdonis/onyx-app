@@ -1288,6 +1288,7 @@ export function ChatPage({
         getLastSuccessfulMessageId(currMessageHistory) || systemMessage;
 
       const stack = new CurrentMessageFIFO();
+
       updateCurrentMessageFIFO(stack, {
         signal: controller.signal, // Add this line
         message: currMessage,

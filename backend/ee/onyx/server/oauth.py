@@ -329,7 +329,6 @@ def handle_slack_oauth_callback(
     state: str,
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> JSONResponse:
     if not SlackOAuth.CLIENT_ID or not SlackOAuth.CLIENT_SECRET:
         raise HTTPException(
@@ -337,7 +336,7 @@ def handle_slack_oauth_callback(
             detail="Slack client ID or client secret is not configured.",
         )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     # recover the state
     padded_state = state + "=" * (
@@ -523,7 +522,6 @@ def handle_google_drive_oauth_callback(
     state: str,
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> JSONResponse:
     if not GoogleDriveOAuth.CLIENT_ID or not GoogleDriveOAuth.CLIENT_SECRET:
         raise HTTPException(
@@ -531,7 +529,7 @@ def handle_google_drive_oauth_callback(
             detail="Google Drive client ID or client secret is not configured.",
         )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     # recover the state
     padded_state = state + "=" * (

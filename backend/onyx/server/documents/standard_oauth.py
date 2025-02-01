@@ -140,7 +140,6 @@ def oauth_callback(
     state: Annotated[str, Query()],
     db_session: Session = Depends(get_session),
     user: User = Depends(current_user),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> CallbackResponse:
     """Handles the OAuth callback and exchanges the code for tokens"""
     oauth_connectors = _discover_oauth_connectors()
@@ -151,7 +150,7 @@ def oauth_callback(
     connector_cls = oauth_connectors[source]
 
     # get state from redis
-    redis_client = get_redis_client(tenant_id=tenant_id)
+    redis_client = get_redis_client()
     oauth_state_bytes = cast(
         bytes, redis_client.get(_OAUTH_STATE_KEY_FMT.format(state=state))
     )

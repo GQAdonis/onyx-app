@@ -12,7 +12,7 @@ from onyx.configs.app_configs import ENTERPRISE_EDITION_ENABLED
 from onyx.configs.constants import KV_CUSTOMER_UUID_KEY
 from onyx.configs.constants import KV_INSTANCE_DOMAIN_KEY
 from onyx.configs.constants import MilestoneRecordType
-from onyx.db.engine import get_session_with_tenant
+from onyx.db.engine import get_session_with_current_tenant
 from onyx.db.milestone import create_milestone_if_not_exists
 from onyx.db.models import User
 from onyx.key_value_store.factory import get_kv_store
@@ -75,7 +75,7 @@ def _get_or_generate_instance_domain() -> str | None:  #
     try:
         _CACHED_INSTANCE_DOMAIN = cast(str, kv_store.load(KV_INSTANCE_DOMAIN_KEY))
     except KvKeyNotFoundError:
-        with get_session_with_tenant() as db_session:
+        with get_session_with_current_tenant() as db_session:
             first_user = db_session.query(User).first()
             if first_user:
                 _CACHED_INSTANCE_DOMAIN = first_user.email.split("@")[-1]

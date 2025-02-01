@@ -38,7 +38,8 @@ from onyx.configs.constants import FASTAPI_USERS_AUTH_COOKIE_NAME
 from onyx.db.auth import get_user_count
 from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
-from onyx.db.engine import get_session_with_tenant
+from onyx.db.engine import get_session_with_current_tenant
+from onyx.db.engine import get_session_with_shared_schema
 from onyx.db.notification import create_notification
 from onyx.db.users import delete_user_from_db
 from onyx.db.users import get_user_by_email
@@ -46,7 +47,6 @@ from onyx.server.manage.models import UserByEmail
 from onyx.server.settings.store import load_settings
 from onyx.server.settings.store import store_settings
 from onyx.utils.logger import setup_logger
-from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -62,7 +62,7 @@ async def get_anonymous_user_path_api(
     if tenant_id is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
+    with get_session_with_shared_schema() as db_session:
         current_path = get_anonymous_user_path(tenant_id, db_session)
 
     return AnonymousUserPath(anonymous_user_path=current_path)
@@ -79,7 +79,7 @@ async def set_anonymous_user_path_api(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
+    with get_session_with_shared_schema() as db_session:
         try:
             modify_anonymous_user_path(tenant_id, anonymous_user_path, db_session)
         except IntegrityError:
@@ -100,7 +100,7 @@ async def login_as_anonymous_user(
     anonymous_user_path: str,
     _: User | None = Depends(optional_user),
 ) -> Response:
-    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
+    with get_session_with_shared_schema() as db_session:
         tenant_id = get_tenant_id_for_anonymous_user_path(
             anonymous_user_path, db_session
         )
@@ -143,7 +143,7 @@ def gate_product(
     store_settings(settings)
 
     if product_gating_request.notification:
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             create_notification(None, product_gating_request.notification, db_session)
 
     if token is not None:
@@ -189,7 +189,7 @@ async def impersonate_user(
     """Allows a cloud superuser to impersonate another user by generating an impersonation JWT token"""
     tenant_id = get_tenant_id_for_email(impersonate_request.email)
 
-    with get_session_with_tenant(tenant_id) as tenant_session:
+    with get_session_with_current_tenant(tenant_id) as tenant_session:
         user_to_impersonate = get_user_by_email(
             impersonate_request.email, tenant_session
         )

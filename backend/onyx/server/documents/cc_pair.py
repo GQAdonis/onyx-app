@@ -343,7 +343,7 @@ def prune_cc_pair(
             detail="Connection not found for current user's permissions",
         )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     redis_connector = RedisConnector(tenant_id, cc_pair_id)
     if redis_connector.prune.fenced:
@@ -415,7 +415,7 @@ def sync_cc_pair(
             detail="Connection not found for current user's permissions",
         )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     redis_connector = RedisConnector(tenant_id, cc_pair_id)
     if redis_connector.permissions.fenced:
@@ -489,7 +489,7 @@ def sync_cc_pair_groups(
             detail="Connection not found for current user's permissions",
         )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     redis_connector = RedisConnector(tenant_id, cc_pair_id)
     if redis_connector.external_group_sync.fenced:

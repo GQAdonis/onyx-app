@@ -42,7 +42,6 @@ from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import SENTRY_DSN
 from shared_configs.configs import TENANT_ID_PREFIX
-from shared_configs.contextvars import current_tenant_id
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
@@ -60,15 +59,18 @@ else:
     logger.debug("Sentry DSN not provided, skipping Sentry initialization")
 
 
+@task_prerun.connect
 def on_task_prerun(
     sender: Any | None = None,
     task_id: str | None = None,
     task: Task | None = None,
     args: tuple[Any, ...] | None = None,
     kwargs: dict[str, Any] | None = None,
-    **kwds: Any,
+    **other_kwargs: Any,
 ) -> None:
-    pass
+    """Signal handler to set tenant ID in context var before task starts."""
+    tenant_id = kwargs.get("tenant_id") if kwargs else None
+    CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id or POSTGRES_DEFAULT_SCHEMA)
 
 
 def on_task_postrun(
@@ -432,31 +434,13 @@ class TenantContextFilter(logging.Filter):
             record.name = ""
             return True
 
-        tenant_id = current_tenant_id()
+        tenant_id = CURRENT_TENANT_ID_CONTEXTVAR.get()
         if tenant_id:
             tenant_id = tenant_id.split(TENANT_ID_PREFIX)[-1][:5]
             record.name = f"[t:{tenant_id}]"
         else:
             record.name = ""
         return True
-
-
-@task_prerun.connect
-def set_tenant_id(
-    sender: Any | None = None,
-    task_id: str | None = None,
-    task: Task | None = None,
-    args: tuple[Any, ...] | None = None,
-    kwargs: dict[str, Any] | None = None,
-    **other_kwargs: Any,
-) -> None:
-    """Signal handler to set tenant ID in context var before task starts."""
-    tenant_id = (
-        kwargs.get("tenant_id", POSTGRES_DEFAULT_SCHEMA)
-        if kwargs
-        else POSTGRES_DEFAULT_SCHEMA
-    )
-    CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
 
 
 @task_postrun.connect

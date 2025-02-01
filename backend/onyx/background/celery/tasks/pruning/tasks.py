@@ -30,7 +30,7 @@ from onyx.db.connector_credential_pair import get_connector_credential_pair
 from onyx.db.connector_credential_pair import get_connector_credential_pair_from_id
 from onyx.db.connector_credential_pair import get_connector_credential_pairs
 from onyx.db.document import get_documents_for_connector_credential_pair
-from onyx.db.engine import get_session_with_tenant
+from onyx.db.engine import get_session_with_current_tenant
 from onyx.db.enums import ConnectorCredentialPairStatus
 from onyx.db.enums import SyncStatus
 from onyx.db.enums import SyncType
@@ -105,14 +105,14 @@ def check_for_pruning(self: Task, *, tenant_id: str | None) -> bool | None:
 
     try:
         cc_pair_ids: list[int] = []
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             cc_pairs = get_connector_credential_pairs(db_session)
             for cc_pair_entry in cc_pairs:
                 cc_pair_ids.append(cc_pair_entry.id)
 
         for cc_pair_id in cc_pair_ids:
             lock_beat.reacquire()
-            with get_session_with_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant(tenant_id) as db_session:
                 cc_pair = get_connector_credential_pair_from_id(
                     db_session=db_session,
                     cc_pair_id=cc_pair_id,
@@ -281,7 +281,7 @@ def connector_pruning_generator_task(
         return None
 
     try:
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant(tenant_id) as db_session:
             cc_pair = get_connector_credential_pair(
                 db_session=db_session,
                 connector_id=connector_id,

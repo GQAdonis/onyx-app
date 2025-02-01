@@ -24,7 +24,7 @@ from onyx.configs.constants import CELERY_PRIMARY_WORKER_LOCK_TIMEOUT
 from onyx.configs.constants import OnyxRedisConstants
 from onyx.configs.constants import OnyxRedisLocks
 from onyx.configs.constants import POSTGRES_CELERY_WORKER_PRIMARY_APP_NAME
-from onyx.db.engine import get_session_with_default_tenant
+from onyx.db.engine import get_session_with_current_tenant
 from onyx.db.engine import SqlEngine
 from onyx.db.index_attempt import get_index_attempt
 from onyx.db.index_attempt import mark_attempt_canceled
@@ -158,7 +158,7 @@ def on_worker_init(sender: Worker, **kwargs: Any) -> None:
     RedisConnectorExternalGroupSync.reset_all(r)
 
     # mark orphaned index attempts as failed
-    with get_session_with_default_tenant() as db_session:
+    with get_session_with_current_tenant() as db_session:
         unfenced_attempt_ids = get_unfenced_index_attempt_ids(db_session, r)
         for attempt_id in unfenced_attempt_ids:
             attempt = get_index_attempt(db_session, attempt_id)
