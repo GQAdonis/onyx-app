@@ -48,7 +48,7 @@ export const SharedFolderItem: React.FC<SharedFolderItemProps> = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-truncate text-text-dark inline-block max-w-md">
+                <span className="text-truncate line-clamp-2 text-text-dark inline-block max-w-md">
                   {folder.name}
                 </span>
               </TooltipTrigger>

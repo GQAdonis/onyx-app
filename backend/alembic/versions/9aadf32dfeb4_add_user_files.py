@@ -65,6 +65,20 @@ def upgrade() -> None:
         ),
     )
 
+    # Create persona__user_folder table
+    op.create_table(
+        "persona__user_folder",
+        sa.Column(
+            "persona_id", sa.Integer(), sa.ForeignKey("persona.id"), primary_key=True
+        ),
+        sa.Column(
+            "user_folder_id",
+            sa.Integer(),
+            sa.ForeignKey("user_folder.id"),
+            primary_key=True,
+        ),
+    )
+
     op.add_column(
         "connector_credential_pair",
         sa.Column("is_user_file", sa.Boolean(), nullable=True),
@@ -72,6 +86,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Drop the persona__user_folder table
+    op.drop_table("persona__user_folder")
     # Drop the persona__user_file table
     op.drop_table("persona__user_file")
     # Drop the user_file table

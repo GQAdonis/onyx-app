@@ -400,19 +400,6 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                   </svg>
                 </div>
               </div>
-
-              <div className="px-2 flex space-x-2">
-                <IconButton
-                  icon={ListIcon}
-                  onClick={() => setView("list")}
-                  active={view === "list"}
-                />
-                <IconButton
-                  icon={GridIcon}
-                  onClick={() => setView("grid")}
-                  active={view === "grid"}
-                />
-              </div>
             </div>
 
             <div className="flex-grow overflow-y-auto px-4">

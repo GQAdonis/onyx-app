@@ -324,7 +324,7 @@ export function FileItem({
               setShowMenu(undefined);
             }}
           >
-            Move
+            Moveewsd
           </button>
           <button
             className="block w-full text-left px-4 py-2 hover:bg-background-100 text-sm text-red-600"

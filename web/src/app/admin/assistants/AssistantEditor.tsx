@@ -274,8 +274,6 @@ export function AssistantEditor({
         (u) => u.id !== existingPersona.owner?.id
       ) ?? [],
     selectedGroups: existingPersona?.groups ?? [],
-    selectedFiles: [] as FileResponse[],
-    selectedFolders: [] as FolderResponse[],
     user_file_ids: existingPersona?.user_file_ids ?? [],
     user_folder_ids: existingPersona?.user_folder_ids ?? [],
   };
@@ -522,8 +520,8 @@ export function AssistantEditor({
               ? new Date(values.search_start_date)
               : null,
             num_chunks: numChunks,
-            user_file_ids: values.selectedFiles.map((file) => file.id),
-            user_folder_ids: values.selectedFolders.map((folder) => folder.id),
+            user_file_ids: selectedFiles.map((file) => file.id),
+            user_folder_ids: selectedFolders.map((folder) => folder.id),
           };
 
           let personaResponse;
@@ -854,40 +852,72 @@ export function AssistantEditor({
                     values.enabled_tools_map[searchTool.id] &&
                     !(user?.role != "admin" && documentSets.length === 0) && (
                       <CollapsibleSection>
-                        <div className="mt-2">
-                          <Label small>User Files</Label>
-                          <Button
-                            className="!p-.5 text-xs"
-                            type="button"
-                            onClick={() => setFilePickerModalOpen(true)}
-                          >
-                            Attach Files and Folders
-                          </Button>
-                          <div>
+                        <div>
+                          <div className="mt-2">
+                            <div className="flex justify-start gap-x-2 items-center">
+                              <Label>User Files</Label>
+                              <span
+                                className="cursor-pointer text-xs text-primary hover:underline"
+                                onClick={() => setFilePickerModalOpen(true)}
+                              >
+                                Attach Files and Folders
+                              </span>
+                            </div>
+
                             <SubLabel>
-                              <>
-                                Select which{" "}
-                                {!user || user.role === "admin" ? (
-                                  <Link
-                                    href="/admin/documents/sets"
-                                    className="font-semibold underline hover:underline text-text"
-                                    target="_blank"
-                                  >
-                                    Team Document Sets
-                                  </Link>
-                                ) : (
-                                  "Team Document Sets"
-                                )}{" "}
-                                this Assistant should use to inform its
-                                responses. If none are specified, the Assistant
-                                will reference all available documents.
-                              </>
+                              Select which user files and folders this Assistant
+                              should use to inform its responses. If none are
+                              specified, the Assistant will not have access to
+                              any user-specific documents.
                             </SubLabel>
+
+                            <div className="mt-2 mb-4">
+                              <h4 className="text-xs font-normal mb-2">
+                                Selected Files and Folders
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedFiles.map((file: FileResponse) => (
+                                  <SourceChip
+                                    key={file.id}
+                                    onRemove={() => {
+                                      removeSelectedFile(file);
+                                      setFieldValue(
+                                        "selectedFiles",
+                                        values.selectedFiles.filter(
+                                          (f: FileResponse) => f.id !== file.id
+                                        )
+                                      );
+                                    }}
+                                    title={file.name}
+                                    icon={<FileIcon size={12} />}
+                                  />
+                                ))}
+                                {selectedFolders.map(
+                                  (folder: FolderResponse) => (
+                                    <SourceChip
+                                      key={folder.id}
+                                      onRemove={() => {
+                                        removeSelectedFolder(folder);
+                                        setFieldValue(
+                                          "selectedFolders",
+                                          values.selectedFolders.filter(
+                                            (f: FolderResponse) =>
+                                              f.id !== folder.id
+                                          )
+                                        );
+                                      }}
+                                      title={folder.name}
+                                      icon={<FolderIcon size={12} />}
+                                    />
+                                  )
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           {ccPairs.length > 0 && (
                             <>
-                              <Label small>Team Knowledge</Label>
+                              <Label>Team Knowledge</Label>
                               <div>
                                 <SubLabel>
                                   <>
@@ -1421,64 +1451,6 @@ export function AssistantEditor({
                   </div>
                 </>
               )}
-
-              <div className="w-full max-w-4xl">
-                <Separator />
-                <div className="flex gap-x-2 py-2 flex justify-start">
-                  <div>
-                    <div className="flex items-start gap-x-2">
-                      <p className="block font-medium text-sm">User Files</p>
-                      <Button
-                        className="!p-.5 text-xs"
-                        type="button"
-                        onClick={() => setFilePickerModalOpen(true)}
-                      >
-                        Attach Files and Folders
-                      </Button>
-                    </div>
-                    <p
-                      className="text-sm text-subtle"
-                      style={{ color: "rgb(113, 114, 121)" }}
-                    >
-                      Select files and folders to attach to this assistant
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {values.selectedFiles.map((file: FileResponse) => (
-                    <SourceChip
-                      key={file.id}
-                      onRemove={() => {
-                        removeSelectedFile(file);
-                        setFieldValue(
-                          "selectedFiles",
-                          values.selectedFiles.filter(
-                            (f: FileResponse) => f.id !== file.id
-                          )
-                        );
-                      }}
-                      title={file.name}
-                      icon={<FileIcon size={12} />}
-                    />
-                  ))}
-                  {values.selectedFolders.map((folder: FolderResponse) => (
-                    <SourceChip
-                      key={folder.id}
-                      onRemove={() => {
-                        removeSelectedFolder(folder);
-                        setFieldValue(
-                          "selectedFolders",
-                          values.selectedFolders.filter(
-                            (f: FolderResponse) => f.id !== folder.id
-                          )
-                        );
-                      }}
-                      title={folder.name}
-                      icon={<FolderIcon size={12} />}
-                    />
-                  ))}
-                </div>
-              </div>
 
               <div className="mt-12 gap-x-2 w-full  justify-end flex">
                 <Button

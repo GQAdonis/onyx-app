@@ -1591,6 +1591,15 @@ class Persona(Base):
     )
 
 
+class Persona__UserFolder(Base):
+    __tablename__ = "persona__user_folder"
+
+    persona_id: Mapped[int] = mapped_column(ForeignKey("persona.id"), primary_key=True)
+    user_folder_id: Mapped[int] = mapped_column(
+        ForeignKey("user_folder.id"), primary_key=True
+    )
+
+
 class Persona__UserFile(Base):
     __tablename__ = "persona__user_file"
 
@@ -2072,6 +2081,11 @@ class UserFolder(Base):
 
     user: Mapped["User"] = relationship(back_populates="folders")
     files: Mapped[list["UserFile"]] = relationship(back_populates="folder")
+    assistants: Mapped[list["Persona"]] = relationship(
+        "Persona",
+        secondary=Persona__UserFolder.__table__,
+        back_populates="user_folders",
+    )
 
 
 class UserDocument(str, Enum):

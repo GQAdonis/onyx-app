@@ -184,6 +184,7 @@ def create_persona(
         and len(persona_upsert_request.prompt_ids) > 0
         else None
     )
+
     prompt = upsert_prompt(
         db_session=db_session,
         user=user,

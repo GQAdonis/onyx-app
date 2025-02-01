@@ -15,6 +15,8 @@ interface CreateEntityModalProps {
   entityName: string;
   onSubmit: (name: string, description: string) => void;
   trigger: React.ReactNode;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
 export default function CreateEntityModal({
@@ -22,23 +24,21 @@ export default function CreateEntityModal({
   entityName,
   onSubmit,
   trigger,
+  open,
+  setOpen,
 }: CreateEntityModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
       onSubmit(name.trim(), description.trim());
-      setName("");
-      setDescription("");
-      setIsOpen(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

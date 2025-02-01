@@ -1,6 +1,7 @@
 import time
 from typing import List
 
+import sqlalchemy.exc
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import File
@@ -29,10 +30,10 @@ from onyx.db.user_documents import unshare_folder_with_assistant
 from onyx.server.documents.models import ConnectorBase
 from onyx.server.documents.models import CredentialBase
 from onyx.server.documents.models import FileUploadResponse
-from onyx.server.user_documents.models import FileResponse
 from onyx.server.user_documents.models import FolderDetailResponse
-from onyx.server.user_documents.models import FolderResponse
 from onyx.server.user_documents.models import MessageResponse
+from onyx.server.user_documents.models import UserFileSnapshot
+from onyx.server.user_documents.models import UserFolderSnapshot
 
 router = APIRouter()
 
@@ -48,19 +49,22 @@ def create_folder(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
 ) -> FolderDetailResponse:
-    new_folder = UserFolder(
-        user_id=user.id if user else None,
-        name=request.name,
-        description=request.description,
-    )
-    db_session.add(new_folder)
-    db_session.commit()
-    return FolderDetailResponse(
-        id=new_folder.id,
-        name=new_folder.name,
-        description=new_folder.description,
-        files=[],
-    )
+    try:
+        new_folder = UserFolder(
+            user_id=user.id if user else None,
+            name=request.name,
+            description=request.description,
+        )
+        db_session.add(new_folder)
+        db_session.commit()
+        return FolderDetailResponse.from_model(new_folder)
+    except sqlalchemy.exc.DataError as e:
+        if "StringDataRightTruncation" in str(e):
+            raise HTTPException(
+                status_code=400,
+                detail="Folder name or description is too long. Please use a shorter name or description.",
+            )
+        raise
 
 
 @router.get(
@@ -69,10 +73,10 @@ def create_folder(
 def get_folders(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> List[FolderResponse]:
+) -> List[UserFolderSnapshot]:
     user_id = user.id if user else None
     folders = db_session.query(UserFolder).filter(UserFolder.user_id == user_id).all()
-    return [FolderResponse.from_model(folder) for folder in folders]
+    return [UserFolderSnapshot.from_model(folder) for folder in folders]
 
 
 @router.get("/user/folder/{folder_id}")
@@ -90,12 +94,7 @@ def get_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    return FolderDetailResponse(
-        id=folder.id,
-        name=folder.name,
-        description=folder.description,
-        files=[FileResponse.from_model(file) for file in folder.files],
-    )
+    return FolderDetailResponse.from_model(folder)
 
 
 @router.post("/user/file/upload")
@@ -170,12 +169,7 @@ def update_folder(
 
     db_session.commit()
 
-    return FolderDetailResponse(
-        id=folder.id,
-        name=folder.name,
-        description=folder.description,
-        files=[FileResponse.from_model(file) for file in folder.files],
-    )
+    return FolderDetailResponse.from_model(folder)
 
 
 @router.delete("/user/folder/{folder_id}")
@@ -226,7 +220,7 @@ def move_file(
     request: FileMoveRequest,
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FileResponse:
+) -> UserFileSnapshot:
     user_id = user.id if user else None
     file = (
         db_session.query(UserFile)
@@ -237,17 +231,17 @@ def move_file(
         raise HTTPException(status_code=404, detail="File not found")
     file.folder_id = request.new_folder_id
     db_session.commit()
-    return FileResponse.from_model(file)
+    return UserFileSnapshot.from_model(file)
 
 
 @router.get("/user/file-system")
 def get_file_system(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> list[FolderResponse]:
+) -> list[UserFolderSnapshot]:
     user_id = user.id if user else None
     folders = db_session.query(UserFolder).filter(UserFolder.user_id == user_id).all()
-    return [FolderResponse.from_model(folder) for folder in folders]
+    return [UserFolderSnapshot.from_model(folder) for folder in folders]
 
 
 @router.put("/user/file/{file_id}/rename")
@@ -256,7 +250,7 @@ def rename_file(
     name: str,
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FileResponse:
+) -> UserFileSnapshot:
     user_id = user.id if user else None
     file = (
         db_session.query(UserFile)
@@ -267,7 +261,7 @@ def rename_file(
         raise HTTPException(status_code=404, detail="File not found")
     file.name = name
     db_session.commit()
-    return FileResponse.from_model(file)
+    return UserFileSnapshot.from_model(file)
 
 
 class ShareRequest(BaseModel):

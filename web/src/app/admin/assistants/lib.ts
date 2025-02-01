@@ -29,6 +29,8 @@ interface PersonaUpsertRequest {
   is_default_persona: boolean;
   display_priority: number | null;
   label_ids: number[] | null;
+  user_file_ids: number[] | null;
+  user_folder_ids: number[] | null;
 }
 
 export interface PersonaUpsertParameters {
@@ -116,7 +118,10 @@ function buildPersonaUpsertRequest(
     icon_shape,
     remove_image,
     search_start_date,
+    user_file_ids,
+    user_folder_ids,
   } = creationRequest;
+
   return {
     name,
     description,
@@ -147,6 +152,8 @@ function buildPersonaUpsertRequest(
     starter_messages: creationRequest.starter_messages ?? null,
     display_priority: null,
     label_ids: creationRequest.label_ids ?? null,
+    user_file_ids: user_file_ids ?? null,
+    user_folder_ids: user_folder_ids ?? null,
   };
 }
 
@@ -178,6 +185,9 @@ export async function createPersona(
     }
   }
 
+  console.log(personaUpsertParams);
+  console.log("PARAMS AR");
+  console.log(buildPersonaUpsertRequest(personaUpsertParams, fileId));
   const createPersonaResponse = await fetch("/api/persona", {
     method: "POST",
     headers: {

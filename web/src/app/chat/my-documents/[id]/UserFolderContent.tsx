@@ -17,10 +17,17 @@ import {
 import { useDocumentsContext, FolderResponse } from "../DocumentsContext";
 import { Button } from "@/components/ui/button";
 import { DocumentList } from "./components/DocumentList";
-import { UploadWarning } from "./components/UploadWarning";
+import { useAssistants } from "@/components/context/AssistantsContext";
+import { AssistantIcon } from "@/components/assistants/AssistantIcon";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function UserFolderContent({ folderId }: { folderId: number }) {
   const router = useRouter();
+  const { assistants } = useAssistants();
   const {
     getFolderDetails,
     updateFolderDetails,
@@ -45,6 +52,8 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   const [isLinksOpen, setIsLinksOpen] = useState(true);
   const [isSharedOpen, setIsSharedOpen] = useState(true);
   const [isCapacityOpen, setIsCapacityOpen] = useState(true);
+
+  const [showUploadWarning, setShowUploadWarning] = useState(false);
 
   const refreshFolderDetails = useCallback(async () => {
     try {
@@ -89,6 +98,17 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   };
 
   const handleUpload = async (files: File[]) => {
+    if (
+      folderDetails?.assistant_ids &&
+      folderDetails.assistant_ids.length > 0
+    ) {
+      setShowUploadWarning(true);
+    } else {
+      await performUpload(files);
+    }
+  };
+
+  const performUpload = async (files: File[]) => {
     try {
       const formData = new FormData();
       files.forEach((file) => {
@@ -103,6 +123,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
       setError("Failed to upload documents. Please try again.");
     } finally {
       setIsLoading(false);
+      setShowUploadWarning(false);
     }
   };
 
@@ -139,15 +160,34 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to My Knowledge Groups
           </div>
 
-          <h1 className="text-2xl text-text font-bold mb-2">
+          <h1 className=" flex items-center gap-1.5 text-lg font-medium leading-tight tracking-tight max-md:hidden">
             {folderDetails.name}
           </h1>
           <p className="text-gray-600 mb-4">{folderDetails.description}</p>
 
-          {folderDetails.sharedAssistants &&
-            folderDetails.sharedAssistants.length > 0 && (
-              <UploadWarning className="mb-4" />
-            )}
+          <Popover open={showUploadWarning} onOpenChange={setShowUploadWarning}>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium">Warning</h4>
+                <p className="text-sm">
+                  This folder is shared with assistants. Uploading new files
+                  will make them accessible to these assistants.
+                </p>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowUploadWarning(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={() => performUpload([])}>
+                    Continue Upload
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <DocumentList
             isLoading={isLoading}
@@ -231,12 +271,23 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
               onClick={() => setIsSharedOpen(!isSharedOpen)}
             >
               <div className="flex items-center">
-                <User className="w-5 h-4 mr-3 text-[#13343a]" />
-                {/* <Users className="w-5 h-4 mr-3 text-[#13343a]" /> */}
-                <span className="text-[#13343a] text-sm font-medium leading-tight">
-                  {/* Shared with 2 Assistants */}
-                  Not shared
-                </span>
+                {folderDetails.assistant_ids &&
+                folderDetails.assistant_ids.length > 0 ? (
+                  <>
+                    <Users className="w-5 h-4 mr-3 text-[#13343a]" />
+                    <span className="text-[#13343a] text-sm font-medium leading-tight">
+                      Shared with {folderDetails.assistant_ids.length} Assistant
+                      {folderDetails.assistant_ids.length > 1 ? "s" : ""}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <User className="w-5 h-4 mr-3 text-[#13343a]" />
+                    <span className="text-[#13343a] text-sm font-medium leading-tight">
+                      Not shared
+                    </span>
+                  </>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -251,10 +302,27 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
               </Button>
             </div>
             {isSharedOpen &&
-              folderDetails.sharedAssistants &&
-              folderDetails.sharedAssistants.length > 0 && (
+              folderDetails.assistant_ids &&
+              folderDetails.assistant_ids.length > 0 && (
                 <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
-                  Shared with: {folderDetails.sharedAssistants.join(", ")}
+                  Shared with:{" "}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {folderDetails.assistant_ids.map((id) => {
+                      const assistant = assistants.find((a) => a.id === id);
+                      return assistant ? (
+                        <a
+                          href={`/assistants/edit/${assistant.id}`}
+                          key={assistant.id}
+                          className="flex bg-neutral-200/80 hover:bg-neutral-200 cursor-pointer px-2 py-1 rounded-md items-center space-x-2"
+                        >
+                          <AssistantIcon assistant={assistant} size="xs" />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {assistant.name}
+                          </span>
+                        </a>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
               )}
           </div>

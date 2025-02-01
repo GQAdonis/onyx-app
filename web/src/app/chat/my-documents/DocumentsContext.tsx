@@ -14,7 +14,8 @@ export interface FolderResponse {
   name: string;
   description: string;
   files: FileResponse[];
-  sharedAssistants?: string[];
+  assistant_ids?: number[];
+  createdAt: string;
 }
 
 export type FileResponse = {
@@ -26,6 +27,7 @@ export type FileResponse = {
   type: string;
   lastModified: string;
   tokens: number;
+  assistant_ids?: number[];
 };
 
 interface DocumentsContextType {
@@ -129,7 +131,8 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
         body: JSON.stringify({ name, description }),
       });
       if (!response.ok) {
-        throw new Error("Failed to create folder");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to create folder");
       }
       await refreshFolders();
     },

@@ -1,37 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Search,
-  Grid,
-  List,
-  Plus,
-  RefreshCw,
-  Upload,
-  Folder,
-  FolderOpen,
-} from "lucide-react";
+import { Search, Plus, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { usePopup } from "@/components/admin/connectors/Popup";
-import { FolderActions } from "./FolderActions";
-import { FolderContents } from "./FolderContents";
 import TextView from "@/components/chat_search/TextView";
 import { PageSelector } from "@/components/PageSelector";
-import { MinimalOnyxDocument } from "@/lib/search/interfaces";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
 import { SharedFolderItem } from "./components/SharedFolderItem";
 import CreateEntityModal from "@/components/modals/CreateEntityModal";
 import { useDocumentsContext } from "./DocumentsContext";
 import { SortIcon } from "@/components/icons/icons";
-
-import { ChevronDown } from "lucide-react";
 
 enum SortType {
   TimeCreated = "Time Created",
@@ -122,6 +101,7 @@ export default function MyDocuments() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { popup, setPopup } = usePopup();
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
 
   const folderIdFromParams = parseInt(searchParams.get("folder") || "0", 10);
 
@@ -138,10 +118,13 @@ export default function MyDocuments() {
         message: "Folder created successfully",
         type: "success",
       });
+      await refreshFolders();
+      setIsCreateFolderOpen(false);
     } catch (error) {
       console.error("Error creating folder:", error);
       setPopup({
-        message: "Failed to create folder",
+        message:
+          error instanceof Error ? error.message : "Failed to create folder",
         type: "error",
       });
     }
@@ -222,9 +205,24 @@ export default function MyDocuments() {
     }
   };
 
-  const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFolders = useMemo(() => {
+    return folders
+      .filter(
+        (folder) =>
+          folder.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          folder.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .sort((a, b) => {
+        if (sortType === SortType.TimeCreated) {
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        } else if (sortType === SortType.Alphabetical) {
+          return a.name.localeCompare(b.name);
+        }
+        return 0;
+      });
+  }, [folders, searchQuery, sortType]);
 
   return (
     <div className="min-h-full w-full min-w-0 flex-1 mx-auto mt-4 w-full max-w-5xl flex-1 px-4 pb-20 md:pl-8 lg:mt-6 md:pr-8 2xl:pr-14">
@@ -236,6 +234,8 @@ export default function MyDocuments() {
           <CreateEntityModal
             title="Create New Knowledge Group"
             entityName="Folder"
+            open={isCreateFolderOpen}
+            setOpen={setIsCreateFolderOpen}
             onSubmit={handleCreateFolder}
             trigger={
               <Button className="inline-flex items-center justify-center relative shrink-0 h-9 px-4 py-2 rounded-lg min-w-[5rem] active:scale-[0.985] whitespace-nowrap pl-2 pr-3 gap-1">
