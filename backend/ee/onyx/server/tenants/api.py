@@ -152,18 +152,18 @@ def gate_product(
 @router.get("/billing-information", response_model=BillingInformation)
 async def billing_information(
     _: User = Depends(current_admin_user),
+    tenant_id: str = Depends(get_current_tenant_id),
 ) -> BillingInformation:
     logger.info("Fetching billing information")
-    return BillingInformation(
-        **fetch_billing_information(CURRENT_TENANT_ID_CONTEXTVAR.get())
-    )
+    return BillingInformation(**fetch_billing_information(tenant_id))
 
 
 @router.post("/create-customer-portal-session")
-async def create_customer_portal_session(_: User = Depends(current_admin_user)) -> dict:
+async def create_customer_portal_session(
+    _: User = Depends(current_admin_user),
+    tenant_id: str = Depends(get_current_tenant_id),
+) -> dict:
     try:
-        # Fetch tenant_id and current tenant's information
-        tenant_id = CURRENT_TENANT_ID_CONTEXTVAR.get()
         stripe_info = fetch_tenant_stripe_information(tenant_id)
         stripe_customer_id = stripe_info.get("stripe_customer_id")
         if not stripe_customer_id:

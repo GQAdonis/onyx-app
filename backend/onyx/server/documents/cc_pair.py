@@ -32,7 +32,6 @@ from onyx.db.connector_credential_pair import (
 )
 from onyx.db.document import get_document_counts_for_cc_pairs
 from onyx.db.document import get_documents_for_cc_pair
-from onyx.db.engine import CURRENT_TENANT_ID_CONTEXTVAR
 from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
 from onyx.db.enums import AccessType
@@ -360,7 +359,7 @@ def prune_cc_pair(
         f"{cc_pair.connector.name} connector."
     )
     tasks_created = try_creating_prune_generator_task(
-        primary_app, cc_pair, db_session, r, CURRENT_TENANT_ID_CONTEXTVAR.get()
+        primary_app, cc_pair, db_session, r, tenant_id
     )
     if not tasks_created:
         raise HTTPException(
@@ -432,7 +431,7 @@ def sync_cc_pair(
         f"{cc_pair.connector.name} connector."
     )
     payload_id = try_creating_permissions_sync_task(
-        primary_app, cc_pair_id, r, CURRENT_TENANT_ID_CONTEXTVAR.get()
+        primary_app, cc_pair_id, r, tenant_id
     )
     if not payload_id:
         raise HTTPException(
@@ -506,7 +505,7 @@ def sync_cc_pair_groups(
         f"{cc_pair.connector.name} connector."
     )
     tasks_created = try_creating_external_group_sync_task(
-        primary_app, cc_pair_id, r, CURRENT_TENANT_ID_CONTEXTVAR.get()
+        primary_app, cc_pair_id, r, tenant_id
     )
     if not tasks_created:
         raise HTTPException(

@@ -41,6 +41,7 @@ from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import SENTRY_DSN
 from shared_configs.configs import TENANT_ID_PREFIX
+from shared_configs.contextvars import current_tenant_id
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
@@ -430,7 +431,7 @@ class TenantContextFilter(logging.Filter):
             record.name = ""
             return True
 
-        tenant_id = CURRENT_TENANT_ID_CONTEXTVAR.get()
+        tenant_id = current_tenant_id()
         if tenant_id:
             tenant_id = tenant_id.split(TENANT_ID_PREFIX)[-1][:5]
             record.name = f"[t:{tenant_id}]"

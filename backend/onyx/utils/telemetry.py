@@ -22,7 +22,7 @@ from onyx.utils.variable_functionality import (
 )
 from onyx.utils.variable_functionality import noop_fallback
 from shared_configs.configs import MULTI_TENANT
-from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
+from shared_configs.contextvars import current_tenant_id
 
 _DANSWER_TELEMETRY_ENDPOINT = "https://telemetry.onyx.app/anonymous_telemetry"
 _CACHED_UUID: str | None = None
@@ -90,12 +90,12 @@ def optional_telemetry(
     record_type: RecordType,
     data: dict,
     user_id: str | None = None,
-    tenant_id: str | None = None,
+    tenant_id: str | None = None,  # Allows for override of tenant_id
 ) -> None:
     if DISABLE_TELEMETRY:
         return
 
-    tenant_id = tenant_id or CURRENT_TENANT_ID_CONTEXTVAR.get()
+    tenant_id = tenant_id or current_tenant_id()
 
     try:
 
