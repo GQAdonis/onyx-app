@@ -8,6 +8,7 @@ import {
   FolderIcon,
   FileIcon,
   PlusIcon,
+  Router,
 } from "lucide-react";
 import { SelectedItemsList } from "./SelectedItemsList";
 import { Separator } from "@/components/ui/separator";
@@ -42,6 +43,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { useRouter } from "next/navigation";
 
 const ListIcon = () => <List className="h-4 w-4" />;
 const GridIcon = () => <Grid className="h-4 w-4" />;
@@ -203,6 +205,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     downloadItem,
   } = useDocumentsContext();
 
+  const router = useRouter();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [links, setLinks] = useState<string[]>([]);
 
@@ -332,11 +335,6 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const calculateTokens = () => {
-    // This is a placeholder calculation. Replace with actual token calculation logic.
-    return selectedFiles.length * 10 + selectedFolders.length * 50;
-  };
-
   const renderNavigation = () => {
     if (currentFolder !== null) {
       return (
@@ -375,7 +373,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
       <div className="flex w-full items-center flex-col h-full">
         <div className="grid h-full grid-cols-2 overflow-y-hidden w-full divide-x divide-gray-200">
           <div className="w-full pb-4 overflow-y-auto">
-            <div className="mb-4 flex gap-x-2 w-full px-4">
+            <div className="mb-4 flex gap-x-2 w-full pr-4">
               <div className="w-full relative">
                 <input
                   type="text"
@@ -402,83 +400,102 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
               </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto px-4">
-              {renderNavigation()}
-              <DndContext
-                sensors={sensors}
-                onDragStart={handleDragStart}
-                onDragMove={handleDragMove}
-                onDragEnd={handleDragEnd}
-                onDragCancel={handleDragCancel}
-                collisionDetection={closestCenter}
-              >
-                <SortableContext
-                  items={[
-                    ...filteredFolders.map((f) => `folder-${f.id}`),
-                    ...currentFolderFiles.map((f) => `file-${f.id}`),
-                  ]}
-                  strategy={verticalListSortingStrategy}
+            {filteredFolders.length + currentFolderFiles.length > 0 ? (
+              <div className="flex-grow overflow-y-auto pr-4">
+                {renderNavigation()}
+                <DndContext
+                  sensors={sensors}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={handleDragCancel}
+                  collisionDetection={closestCenter}
                 >
-                  <div className="mt-4 space-y-3">
-                    {currentFolder === null
-                      ? filteredFolders.map((folder) => (
-                          <FilePickerFolderItem
-                            key={`folder-${folder.id}`}
-                            folder={folder}
-                            onClick={() => handleFolderClick(folder.id)}
-                            onSelect={() => handleFolderSelect(folder)}
-                            isSelected={selectedFolders.some(
-                              (f) => f.id === folder.id
-                            )}
-                          />
-                        ))
-                      : currentFolderFiles.map((file) => (
-                          <DraggableItem
-                            key={`file-${file.id}`}
-                            id={`file-${file.id}`}
-                            type="file"
-                            item={file}
-                            onClick={() => handleFileSelect(file)}
-                            isSelected={selectedFiles.some(
-                              (f) => f.id === file.id
-                            )}
-                          />
-                        ))}
-                  </div>
-                </SortableContext>
+                  <SortableContext
+                    items={[
+                      ...filteredFolders.map((f) => `folder-${f.id}`),
+                      ...currentFolderFiles.map((f) => `file-${f.id}`),
+                    ]}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {currentFolder === null
+                        ? filteredFolders.map((folder) => (
+                            <FilePickerFolderItem
+                              key={`folder-${folder.id}`}
+                              folder={folder}
+                              onClick={() => handleFolderClick(folder.id)}
+                              onSelect={() => handleFolderSelect(folder)}
+                              isSelected={selectedFolders.some(
+                                (f) => f.id === folder.id
+                              )}
+                            />
+                          ))
+                        : currentFolderFiles.map((file) => (
+                            <DraggableItem
+                              key={`file-${file.id}`}
+                              id={`file-${file.id}`}
+                              type="file"
+                              item={file}
+                              onClick={() => handleFileSelect(file)}
+                              isSelected={selectedFiles.some(
+                                (f) => f.id === file.id
+                              )}
+                            />
+                          ))}
+                    </div>
+                  </SortableContext>
 
-                <DragOverlay>
-                  {activeId ? (
-                    <DraggableItem
-                      id={activeId}
-                      type={activeId.startsWith("folder") ? "folder" : "file"}
-                      item={
-                        activeId.startsWith("folder")
-                          ? folders.find(
-                              (f) =>
-                                f.id === parseInt(activeId.split("-")[1], 10)
-                            )!
-                          : currentFolderFiles.find(
-                              (f) =>
-                                f.id === parseInt(activeId.split("-")[1], 10)
-                            )!
-                      }
-                      isSelected={
-                        activeId.startsWith("folder")
-                          ? selectedFolders.some(
-                              (f) =>
-                                f.id === parseInt(activeId.split("-")[1], 10)
-                            )
-                          : selectedFiles.some(
-                              (f) =>
-                                f.id === parseInt(activeId.split("-")[1], 10)
-                            )
-                      }
-                    />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </div>
+                  <DragOverlay>
+                    {activeId ? (
+                      <DraggableItem
+                        id={activeId}
+                        type={activeId.startsWith("folder") ? "folder" : "file"}
+                        item={
+                          activeId.startsWith("folder")
+                            ? folders.find(
+                                (f) =>
+                                  f.id === parseInt(activeId.split("-")[1], 10)
+                              )!
+                            : currentFolderFiles.find(
+                                (f) =>
+                                  f.id === parseInt(activeId.split("-")[1], 10)
+                              )!
+                        }
+                        isSelected={
+                          activeId.startsWith("folder")
+                            ? selectedFolders.some(
+                                (f) =>
+                                  f.id === parseInt(activeId.split("-")[1], 10)
+                              )
+                            : selectedFiles.some(
+                                (f) =>
+                                  f.id === parseInt(activeId.split("-")[1], 10)
+                              )
+                        }
+                      />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            ) : folders.length > 0 ? (
+              <div className="flex-grow overflow-y-auto px-4">
+                <p className="text-text-subtle">No files or folders found</p>
+              </div>
+            ) : (
+              <div className="flex-grow flex-col overflow-y-auto px-4 flex items-start justify-start gap-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No files or folders found
+                </p>
+                <a
+                  href="/chat/my-documents"
+                  className="inline-flex items-center text-sm justify-center"
+                >
+                  <FolderIcon className="mr-2 h-4 w-4" />
+                  Create folder in My Documents
+                </a>
+              </div>
+            )}
           </div>
           <div
             className={`w-full px-4 pb-4 flex flex-col h-[450px] ${

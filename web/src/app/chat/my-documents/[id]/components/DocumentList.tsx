@@ -7,14 +7,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Grid, List, Loader2 } from "lucide-react";
 import { FileUploadSection } from "./FileUploadSection";
+import TextView from "@/components/chat_search/TextView";
+import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 
 interface DocumentListProps {
   files: FileResponse[];
   onSummarize: (documentId: string) => Promise<string>;
-  onAddToCollection: (
-    documentId: string,
-    collectionId: string
-  ) => Promise<void>;
   onRename: (
     itemId: number,
     currentName: string,
@@ -29,13 +27,14 @@ interface DocumentListProps {
 export const DocumentList: React.FC<DocumentListProps> = ({
   files,
   onSummarize,
-  onAddToCollection,
   onRename,
   onDelete,
   onDownload,
   onUpload,
   isLoading,
 }) => {
+  const [presentingDocument, setPresentingDocument] =
+    useState<MinimalOnyxDocument | null>(null);
   const [view, setView] = useState<"grid" | "list">("list");
 
   const toggleView = () => {
@@ -44,6 +43,13 @@ export const DocumentList: React.FC<DocumentListProps> = ({
 
   return (
     <div className="space-y-4">
+      {presentingDocument && (
+        <TextView
+          presentingDocument={presentingDocument}
+          onClose={() => setPresentingDocument(null)}
+        />
+      )}
+
       <div className="flex justify-between items-center">
         <h2 className="text-sm font-semibold">Documents in this Project</h2>
         <Button onClick={toggleView} variant="outline" size="sm">
@@ -59,10 +65,15 @@ export const DocumentList: React.FC<DocumentListProps> = ({
             file={file}
             view={view}
             onSummarize={onSummarize}
-            onAddToCollection={onAddToCollection}
             onRename={onRename}
             onDelete={onDelete}
             onDownload={onDownload}
+            onSelect={() =>
+              setPresentingDocument({
+                semantic_identifier: file.id.toString(),
+                document_id: file.document_id,
+              })
+            }
           />
         ))}
         {isLoading && <SkeletonFileListItem view={view} />}

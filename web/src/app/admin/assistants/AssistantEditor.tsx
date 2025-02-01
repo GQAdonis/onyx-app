@@ -61,10 +61,10 @@ import { debounce } from "lodash";
 import { FullLLMProvider } from "../configuration/llm/interfaces";
 import StarterMessagesList from "./StarterMessageList";
 
-import { Switch, SwitchField } from "@/components/ui/switch";
+import { SwitchField } from "@/components/ui/switch";
 import { generateIdenticon } from "@/components/assistants/AssistantIcon";
 import { BackButton } from "@/components/BackButton";
-import { Checkbox, CheckboxField } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AdvancedOptionsToggle } from "@/components/AdvancedOptionsToggle";
 import { MinimalUserSnapshot } from "@/lib/types";
 import { useUserGroups } from "@/lib/hooks";
@@ -73,20 +73,18 @@ import {
   Option as DropdownOption,
 } from "@/components/Dropdown";
 import { SourceChip } from "@/app/chat/input/ChatInputBar";
-import { TagIcon, UserIcon, XIcon, FileIcon, FolderIcon } from "lucide-react";
+import { TagIcon, UserIcon, FileIcon, FolderIcon } from "lucide-react";
 import { LLMSelector } from "@/components/llm/LLMSelector";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { DeleteEntityModal } from "@/components/modals/DeleteEntityModal";
 import { DeletePersonaButton } from "./[id]/DeletePersonaButton";
-import Title from "@/components/ui/title";
 import { FilePickerModal } from "@/app/chat/my-documents/components/FilePicker";
 import { useDocumentsContext } from "@/app/chat/my-documents/DocumentsContext";
 import {
   FileResponse,
   FolderResponse,
 } from "@/app/chat/my-documents/DocumentsContext";
-import { shareFiles, shareFolders } from "./assistantFileUtils";
 
 function findSearchTool(tools: ToolSnapshot[]) {
   return tools.find((tool) => tool.in_code_tool_id === "SearchTool");
@@ -788,8 +786,6 @@ export function AssistantEditor({
 
               <div className="w-full max-w-4xl">
                 <div className="flex flex-col">
-                  <Separator />
-
                   {searchTool && (
                     <>
                       <Separator />
@@ -853,67 +849,70 @@ export function AssistantEditor({
                     !(user?.role != "admin" && documentSets.length === 0) && (
                       <CollapsibleSection>
                         <div>
-                          <div className="mt-2">
-                            <div className="flex justify-start gap-x-2 items-center">
-                              <Label>User Files</Label>
-                              <span
-                                className="cursor-pointer text-xs text-primary hover:underline"
-                                onClick={() => setFilePickerModalOpen(true)}
-                              >
-                                Attach Files and Folders
-                              </span>
-                            </div>
+                          {!existingPersona?.is_default_persona && !admin && (
+                            <div className="mt-2">
+                              <div className="flex justify-start gap-x-2 items-center">
+                                <Label>User Files</Label>
+                                <span
+                                  className="cursor-pointer text-xs text-primary hover:underline"
+                                  onClick={() => setFilePickerModalOpen(true)}
+                                >
+                                  Attach Files and Folders
+                                </span>
+                              </div>
 
-                            <SubLabel>
-                              Select which user files and folders this Assistant
-                              should use to inform its responses. If none are
-                              specified, the Assistant will not have access to
-                              any user-specific documents.
-                            </SubLabel>
+                              <SubLabel>
+                                Select which of your user files and folders this
+                                Assistant should use to inform its responses. If
+                                none are specified, the Assistant will not have
+                                access to any user-specific documents.
+                              </SubLabel>
 
-                            <div className="mt-2 mb-4">
-                              <h4 className="text-xs font-normal mb-2">
-                                Selected Files and Folders
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedFiles.map((file: FileResponse) => (
-                                  <SourceChip
-                                    key={file.id}
-                                    onRemove={() => {
-                                      removeSelectedFile(file);
-                                      setFieldValue(
-                                        "selectedFiles",
-                                        values.selectedFiles.filter(
-                                          (f: FileResponse) => f.id !== file.id
-                                        )
-                                      );
-                                    }}
-                                    title={file.name}
-                                    icon={<FileIcon size={12} />}
-                                  />
-                                ))}
-                                {selectedFolders.map(
-                                  (folder: FolderResponse) => (
+                              <div className="mt-2 mb-4">
+                                <h4 className="text-xs font-normal mb-2">
+                                  Selected Files and Folders
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedFiles.map((file: FileResponse) => (
                                     <SourceChip
-                                      key={folder.id}
+                                      key={file.id}
                                       onRemove={() => {
-                                        removeSelectedFolder(folder);
+                                        removeSelectedFile(file);
                                         setFieldValue(
-                                          "selectedFolders",
-                                          values.selectedFolders.filter(
-                                            (f: FolderResponse) =>
-                                              f.id !== folder.id
+                                          "selectedFiles",
+                                          values.selectedFiles.filter(
+                                            (f: FileResponse) =>
+                                              f.id !== file.id
                                           )
                                         );
                                       }}
-                                      title={folder.name}
-                                      icon={<FolderIcon size={12} />}
+                                      title={file.name}
+                                      icon={<FileIcon size={12} />}
                                     />
-                                  )
-                                )}
+                                  ))}
+                                  {selectedFolders.map(
+                                    (folder: FolderResponse) => (
+                                      <SourceChip
+                                        key={folder.id}
+                                        onRemove={() => {
+                                          removeSelectedFolder(folder);
+                                          setFieldValue(
+                                            "selectedFolders",
+                                            values.selectedFolders.filter(
+                                              (f: FolderResponse) =>
+                                                f.id !== folder.id
+                                            )
+                                          );
+                                        }}
+                                        title={folder.name}
+                                        icon={<FolderIcon size={12} />}
+                                      />
+                                    )
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
 
                           {ccPairs.length > 0 && (
                             <>

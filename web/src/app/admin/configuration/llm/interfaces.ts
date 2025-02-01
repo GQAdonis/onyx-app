@@ -39,6 +39,12 @@ export interface WellKnownLLMProviderDescriptor {
   groups: number[];
 }
 
+export interface LLMModelDescriptor {
+  modelName: string;
+  provider: string;
+  maxTokens: number;
+}
+
 export interface LLMProvider {
   name: string;
   provider: string;

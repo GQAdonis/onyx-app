@@ -8,17 +8,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FileResponse } from "../DocumentsContext";
-
+import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 interface FileListItemProps {
   file: FileResponse;
   isSelected?: boolean;
   onSelect?: () => void;
   view: "grid" | "list";
   onSummarize: (documentId: string) => Promise<string>;
-  onAddToCollection: (
-    documentId: string,
-    collectionId: string
-  ) => Promise<void>;
   onRename: (
     itemId: number,
     currentName: string,
@@ -34,7 +30,6 @@ export const FileListItem: React.FC<FileListItemProps> = ({
   onSelect,
   view,
   onSummarize,
-  onAddToCollection,
   onRename,
   onDelete,
   onDownload,
@@ -89,15 +84,6 @@ export const FileListItem: React.FC<FileListItemProps> = ({
               onClick={() => onSummarize(file.document_id)}
             >
               Summarize
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() =>
-                onAddToCollection(file.document_id, "mock-collection-id")
-              }
-            >
-              Add to collection
             </Button>
             <Button
               variant="ghost"

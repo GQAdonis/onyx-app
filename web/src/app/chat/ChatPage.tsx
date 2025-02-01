@@ -152,6 +152,17 @@ export function ChatPage({
     refreshChatSessions,
   } = useChatContext();
 
+  const {
+    selectedFiles,
+    selectedFolders,
+    addSelectedFile,
+    removeSelectedFile,
+    addSelectedFolder,
+    removeSelectedFolder,
+    clearSelectedItems,
+    folders: userFolders,
+  } = useDocumentsContext();
+
   const defaultAssistantIdRaw = searchParams.get(SEARCH_PARAM_NAMES.PERSONA_ID);
   const defaultAssistantId = defaultAssistantIdRaw
     ? parseInt(defaultAssistantIdRaw)
@@ -548,6 +559,18 @@ export function ChatPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingChatSessionId, searchParams.get(SEARCH_PARAM_NAMES.PERSONA_ID)]);
 
+  useEffect(() => {
+    const userFolderId = searchParams.get(SEARCH_PARAM_NAMES.USER_FOLDER_ID);
+    if (userFolderId) {
+      const userFolder = userFolders.find(
+        (folder) => folder.id === parseInt(userFolderId)
+      );
+      if (userFolder) {
+        addSelectedFolder(userFolder);
+      }
+    }
+  }, [userFolders, searchParams.get(SEARCH_PARAM_NAMES.USER_FOLDER_ID)]);
+
   const [message, setMessage] = useState(
     searchParams.get(SEARCH_PARAM_NAMES.USER_PROMPT) || ""
   );
@@ -821,16 +844,6 @@ export function ChatPage({
       );
     }
   }, [submittedMessage, currentSessionChatState]);
-
-  const {
-    selectedFiles,
-    selectedFolders,
-    addSelectedFile,
-    removeSelectedFile,
-    addSelectedFolder,
-    removeSelectedFolder,
-    clearSelectedItems,
-  } = useDocumentsContext();
   // just choose a conservative default, this will be updated in the
   // background on initial load / on persona change
   const [maxTokens, setMaxTokens] = useState<number>(4096);
@@ -1297,8 +1310,8 @@ export function ChatPage({
           .map((document) => document.db_doc_id as number),
         queryOverride,
         forceSearch,
-        userFolderDescriptors: selectedFolders.map((folder) => folder.id),
-        userFileDescriptors: selectedFiles.map((file) => file.id),
+        userFolderIds: selectedFolders.map((folder) => folder.id),
+        userFileIds: selectedFiles.map((file) => file.id),
         regenerate: regenerationRequest !== undefined,
         modelProvider:
           modelOverRide?.name ||
@@ -1912,6 +1925,11 @@ export function ChatPage({
   const [settingsToggled, setSettingsToggled] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
 
+  const [selectedDocuments, setSelectedDocuments] = useState<OnyxDocument[]>(
+    []
+  );
+  const [selectedDocumentTokens, setSelectedDocumentTokens] = useState(0);
+
   const currentPersona = alternativeAssistant || liveAssistant;
 
   useEffect(() => {
@@ -2016,11 +2034,6 @@ export function ChatPage({
         <NoAssistantModal isAdmin={isAdmin} />
       </>
     );
-
-  const [selectedDocuments, setSelectedDocuments] = useState<OnyxDocument[]>(
-    []
-  );
-  const [selectedDocumentTokens, setSelectedDocumentTokens] = useState(0);
 
   const clearSelectedDocuments = () => {
     setSelectedDocuments([]);

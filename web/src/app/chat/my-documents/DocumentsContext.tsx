@@ -298,7 +298,12 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const addSelectedFolder = useCallback((folder: FolderResponse) => {
-    setSelectedFolders((prev) => [...prev, folder]);
+    setSelectedFolders((prev) => {
+      if (prev.find((f) => f.id === folder.id)) {
+        return prev;
+      }
+      return [...prev, folder];
+    });
   }, []);
 
   const removeSelectedFolder = useCallback((folder: FolderResponse) => {

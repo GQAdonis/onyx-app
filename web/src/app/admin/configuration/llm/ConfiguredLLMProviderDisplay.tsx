@@ -25,8 +25,7 @@ function LLMProviderUpdateModal({
 }) {
   const providerName = existingLlmProvider?.name
     ? `"${existingLlmProvider.name}"`
-    : null ||
-      llmProviderDescriptor?.display_name ||
+    : llmProviderDescriptor?.display_name ||
       llmProviderDescriptor?.name ||
       "Custom LLM Provider";
   return (

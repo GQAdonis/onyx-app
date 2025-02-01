@@ -11,7 +11,6 @@ from onyx.configs.constants import FileOrigin
 from onyx.db.engine import get_session_with_tenant
 from onyx.db.models import ChatMessage
 from onyx.db.models import UserFile
-from onyx.db.models import UserFolder
 from onyx.file_store.file_store import get_default_file_store
 from onyx.file_store.models import ChatFileType
 from onyx.file_store.models import FileDescriptor
@@ -57,35 +56,28 @@ def load_all_chat_files(
 
 
 def load_all_user_files(
-    user_file_descriptors: list[int],
-    user_folder_descriptors: list[int],
+    user_file_ids: list[int],
+    user_folder_ids: list[int],
     db_session: Session,
 ) -> list[InMemoryChatFile]:
     return cast(
         list[InMemoryChatFile],
         run_functions_tuples_in_parallel(
-            [
-                (load_user_file, (file_id, db_session))
-                for file_id in user_file_descriptors
-            ]
-            + [
-                (load_user_folder, (folder_id, db_session))
-                for folder_id in user_folder_descriptors
-            ]
-        ),
+            [(load_user_file, (file_id, db_session)) for file_id in user_file_ids]
+        )
+        + [
+            file
+            for folder_id in user_folder_ids
+            for file in load_user_folder(folder_id, db_session)
+        ],
     )
 
 
-def load_user_folder(folder_id: int, db_session: Session) -> InMemoryChatFile:
-    user_folder = (
-        db_session.query(UserFolder).filter(UserFolder.id == folder_id).first()
+def load_user_folder(folder_id: int, db_session: Session) -> list[InMemoryChatFile]:
+    user_files = (
+        db_session.query(UserFile).filter(UserFile.folder_id == folder_id).all()
     )
-    return InMemoryChatFile(
-        file_id=str(user_folder.id),
-        content=user_folder.content,
-        file_type=ChatFileType.PLAIN_TEXT,
-        filename=user_folder.name,
-    )
+    return [load_user_file(file.id, db_session) for file in user_files]
 
 
 def load_user_file(file_id: int, db_session: Session) -> InMemoryChatFile:

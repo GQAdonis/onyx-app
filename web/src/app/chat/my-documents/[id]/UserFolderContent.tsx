@@ -24,15 +24,57 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { LLMModelDescriptor } from "@/app/admin/configuration/llm/interfaces";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { OpenAIIcon } from "@/components/icons/icons";
 
-export default function UserFolderContent({ folderId }: { folderId: number }) {
+const ModelSelector: React.FC<{
+  models: LLMModelDescriptor[];
+  selectedModel: LLMModelDescriptor;
+  onSelectModel: (model: LLMModelDescriptor) => void;
+}> = ({ models, selectedModel, onSelectModel }) => (
+  <Select
+    value={selectedModel.modelName}
+    onValueChange={(value) =>
+      onSelectModel(models.find((m) => m.modelName === value) || models[0])
+    }
+  >
+    <SelectTrigger className="w-full">
+      <SelectValue placeholder="Select a model" />
+    </SelectTrigger>
+    <SelectContent>
+      {models.map((model) => (
+        <SelectItem
+          icon={OpenAIIcon}
+          key={model.modelName}
+          value={model.modelName}
+        >
+          {model.modelName}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
+
+export default function UserFolderContent({
+  models,
+  folderId,
+}: {
+  models: LLMModelDescriptor[];
+  folderId: number;
+}) {
   const router = useRouter();
   const { assistants } = useAssistants();
   const {
     getFolderDetails,
     updateFolderDetails,
     summarizeDocument,
-    addToCollection,
     downloadItem,
     renameItem,
     deleteItem,
@@ -46,14 +88,14 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
-  const [isInstructionsOpen, setIsInstructionsOpen] = useState(true);
-  const [isSourcesOpen, setIsSourcesOpen] = useState(true);
-  const [isFilesOpen, setIsFilesOpen] = useState(true);
-  const [isLinksOpen, setIsLinksOpen] = useState(true);
   const [isSharedOpen, setIsSharedOpen] = useState(true);
   const [isCapacityOpen, setIsCapacityOpen] = useState(true);
 
   const [showUploadWarning, setShowUploadWarning] = useState(false);
+
+  const [selectedModel, setSelectedModel] = useState<LLMModelDescriptor>(
+    models[0]
+  );
 
   const refreshFolderDetails = useCallback(async () => {
     try {
@@ -77,7 +119,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
 
   const handleStartChat = () => {
     if (folderDetails) {
-      router.push(`/chat?folder=${folderId}`);
+      router.push(`/chat?userFolderId=${folderId}`);
     }
   };
 
@@ -146,7 +188,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   }
 
   const totalTokens = folderDetails.files.length * 1000; // Mock data: assume 1000 tokens per file
-  const maxTokens = 10000; // Mock data: max tokens for the model
+  const maxTokens = selectedModel.maxTokens;
   const tokenPercentage = (totalTokens / maxTokens) * 100;
 
   return (
@@ -159,12 +201,10 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to My Knowledge Groups
           </div>
-
           <h1 className=" flex items-center gap-1.5 text-lg font-medium leading-tight tracking-tight max-md:hidden">
             {folderDetails.name}
           </h1>
           <p className="text-gray-600 mb-4">{folderDetails.description}</p>
-
           <Popover open={showUploadWarning} onOpenChange={setShowUploadWarning}>
             <PopoverContent className="w-80">
               <div className="space-y-2">
@@ -193,7 +233,6 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
             isLoading={isLoading}
             files={folderDetails.files}
             onSummarize={summarizeDocument}
-            onAddToCollection={addToCollection}
             onRename={renameItem}
             onDelete={deleteItem}
             onDownload={downloadItem}
@@ -207,6 +246,13 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
               className="flex items-center justify-between"
               onClick={() => setIsCapacityOpen(!isCapacityOpen)}
             >
+              <div className="flex items-center">
+                <Info className="w-5 h-4 mr-3 text-[#13343a]" />
+                <span className="text-[#13343a] text-sm font-medium leading-tight">
+                  Instructions
+                </span>
+              </div>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -222,6 +268,13 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
 
             {isCapacityOpen && (
               <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
+                <div className="mb-2">
+                  <ModelSelector
+                    models={models}
+                    selectedModel={selectedModel}
+                    onSelectModel={setSelectedModel}
+                  />
+                </div>
                 <div className="mb-1">
                   Tokens: {totalTokens} / {maxTokens}
                 </div>
@@ -232,37 +285,12 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
                   ></div>
                 </div>
                 {tokenPercentage > 100 && (
-                  <div className="mt-1 text-xs text-red-500">
+                  <div className="mt-1 text-xs text-text-500">
                     Capacity exceeded. Search will be performed over content.
                   </div>
                 )}
               </div>
             )}
-          </div>
-
-          <div className="p-4 border-b border-[#d9d9d0]">
-            <div
-              className="flex items-center justify-between"
-              onClick={() => setIsSourcesOpen(!isSourcesOpen)}
-            >
-              <div className="flex items-center">
-                <Info className="w-5 h-4 mr-3 text-[#13343a]" />
-                <span className="text-[#13343a] text-sm font-medium leading-tight">
-                  Sources
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-6 h-6 p-0 rounded-full"
-              >
-                {isSourcesOpen ? (
-                  <ChevronDown className="w-[15px] h-3 text-[#13343a]" />
-                ) : (
-                  <ChevronRight className="w-[15px] h-3 text-[#13343a]" />
-                )}
-              </Button>
-            </div>
           </div>
 
           <div className="p-4 border-b border-[#d9d9d0]">
@@ -302,8 +330,8 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
               </Button>
             </div>
             {isSharedOpen &&
-              folderDetails.assistant_ids &&
-              folderDetails.assistant_ids.length > 0 && (
+              (folderDetails.assistant_ids &&
+              folderDetails.assistant_ids.length > 0 ? (
                 <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
                   Shared with:{" "}
                   <div className="flex flex-wrap gap-2 mt-1">
@@ -324,7 +352,11 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
                     })}
                   </div>
                 </div>
-              )}
+              ) : (
+                <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
+                  Not shared with any assistants
+                </div>
+              ))}
           </div>
 
           <div className="p-4">

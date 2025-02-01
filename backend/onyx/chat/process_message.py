@@ -513,8 +513,8 @@ def stream_chat_message_objects(
             history_msgs, new_msg_req.file_descriptors, db_session
         )
         user_files = load_all_user_files(
-            new_msg_req.user_file_descriptors,
-            new_msg_req.user_folder_descriptors,
+            new_msg_req.user_file_ids,
+            new_msg_req.user_folder_ids,
             db_session,
         )
         latest_query_files = [

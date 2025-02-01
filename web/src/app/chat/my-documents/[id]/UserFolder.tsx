@@ -11,7 +11,22 @@ export default function WrappedUserFolders({
   return (
     <SidebarWrapper size="lg">
       <div className="mx-auto w-full">
-        <UserFolderContent folderId={Number(userFileId)} />
+        <UserFolderContent
+          models={[
+            // faux data for now
+            {
+              modelName: "gpt-4o",
+              provider: "openai",
+              maxTokens: 1000,
+            },
+            {
+              modelName: "gpt-4o-mini",
+              provider: "openai",
+              maxTokens: 2000,
+            },
+          ]}
+          folderId={Number(userFileId)}
+        />
       </div>
     </SidebarWrapper>
   );
