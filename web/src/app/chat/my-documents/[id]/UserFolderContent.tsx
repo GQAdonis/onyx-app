@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OpenAIIcon } from "@/components/icons/icons";
+import { useChatContext } from "@/components/context/ChatContext";
+import { getDisplayNameForModel } from "@/lib/hooks";
 
 const ModelSelector: React.FC<{
   models: LLMModelDescriptor[];
@@ -55,20 +57,14 @@ const ModelSelector: React.FC<{
           key={model.modelName}
           value={model.modelName}
         >
-          {model.modelName}
+          {getDisplayNameForModel(model.modelName)}
         </SelectItem>
       ))}
     </SelectContent>
   </Select>
 );
 
-export default function UserFolderContent({
-  models,
-  folderId,
-}: {
-  models: LLMModelDescriptor[];
-  folderId: number;
-}) {
+export default function UserFolderContent({ folderId }: { folderId: number }) {
   const router = useRouter();
   const { assistants } = useAssistants();
   const {
@@ -81,9 +77,18 @@ export default function UserFolderContent({
     uploadFile,
   } = useDocumentsContext();
 
+  const { llmProviders } = useChatContext();
+  const modelDescriptors = [
+    ...llmProviders.map((provider) => ({
+      modelName: provider.default_model_name,
+      provider: provider.provider,
+      maxTokens: provider.model_token_limits?.[provider.default_model_name],
+    })),
+  ] as LLMModelDescriptor[];
   const [folderDetails, setFolderDetails] = useState<FolderResponse | null>(
     null
   );
+  alert(JSON.stringify(llmProviders));
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -94,7 +99,7 @@ export default function UserFolderContent({
   const [showUploadWarning, setShowUploadWarning] = useState(false);
 
   const [selectedModel, setSelectedModel] = useState<LLMModelDescriptor>(
-    models[0]
+    modelDescriptors[0]
   );
 
   const refreshFolderDetails = useCallback(async () => {
@@ -270,7 +275,7 @@ export default function UserFolderContent({
               <div className="mt-2 text-[#64645e] text-sm font-normal leading-tight">
                 <div className="mb-2">
                   <ModelSelector
-                    models={models}
+                    models={modelDescriptors}
                     selectedModel={selectedModel}
                     onSelectModel={setSelectedModel}
                   />

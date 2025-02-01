@@ -89,6 +89,7 @@ export async function fetchChatData(searchParams: {
 
   const tagsResponse = results[5] as Response | null;
   const llmProviders = (results[6] || []) as LLMProviderDescriptor[];
+  console.log(llmProviders);
   const foldersResponse = results[7] as Response | null;
 
   let inputPrompts: InputPrompt[] = [];

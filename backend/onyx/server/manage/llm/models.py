@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from onyx.llm.llm_provider_options import fetch_models_for_provider
+from onyx.llm.utils import get_max_input_tokens
 
 
 if TYPE_CHECKING:
@@ -35,6 +36,7 @@ class LLMProviderDescriptor(BaseModel):
     fast_default_model_name: str | None
     is_default_provider: bool | None
     display_model_names: list[str] | None
+    model_token_limits: dict[str, int] | None = None
 
     @classmethod
     def from_model(
@@ -51,6 +53,14 @@ class LLMProviderDescriptor(BaseModel):
                 or fetch_models_for_provider(llm_provider_model.provider)
                 or [llm_provider_model.default_model_name]
             ),
+            model_token_limits={
+                model_name: get_max_input_tokens(
+                    model_name, llm_provider_model.provider
+                )
+                for model_name in llm_provider_model.model_names
+            }
+            if llm_provider_model.model_names is not None
+            else None,
             display_model_names=llm_provider_model.display_model_names,
         )
 
@@ -80,9 +90,11 @@ class FullLLMProvider(LLMProvider):
     id: int
     is_default_provider: bool | None = None
     model_names: list[str]
+    model_token_limits: dict[str, int] | None = None
 
     @classmethod
     def from_model(cls, llm_provider_model: "LLMProviderModel") -> "FullLLMProvider":
+        print("GETTING LLM PROIVE DETAIL")
         return cls(
             id=llm_provider_model.id,
             name=llm_provider_model.name,
@@ -100,6 +112,14 @@ class FullLLMProvider(LLMProvider):
                 or fetch_models_for_provider(llm_provider_model.provider)
                 or [llm_provider_model.default_model_name]
             ),
+            model_token_limits={
+                model_name: get_max_input_tokens(
+                    model_name, llm_provider_model.provider
+                )
+                for model_name in llm_provider_model.model_names
+            }
+            if llm_provider_model.model_names is not None
+            else None,
             is_public=llm_provider_model.is_public,
             groups=[group.id for group in llm_provider_model.groups],
             deployment_name=llm_provider_model.deployment_name,
