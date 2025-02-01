@@ -37,6 +37,7 @@ from onyx.redis.redis_usergroup import RedisUserGroup
 from onyx.utils.logger import ColoredFormatter
 from onyx.utils.logger import PlainFormatter
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import DEFAULT_REDIS_PREFIX
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import SENTRY_DSN
@@ -202,7 +203,7 @@ def wait_for_redis(sender: Any, **kwargs: Any) -> None:
     Will raise WorkerShutdown to kill the celery worker if the timeout
     is reached."""
 
-    r = get_redis_client(tenant_id=None)
+    r = get_redis_client(tenant_id=DEFAULT_REDIS_PREFIX)
 
     WAIT_INTERVAL = 5
     WAIT_LIMIT = 60
@@ -288,7 +289,7 @@ def on_secondary_worker_init(sender: Any, **kwargs: Any) -> None:
     # Set up variables for waiting on primary worker
     WAIT_INTERVAL = 5
     WAIT_LIMIT = 60
-    r = get_redis_client(tenant_id=None)
+    r = get_redis_client(tenant_id=DEFAULT_REDIS_PREFIX)
     time_start = time.monotonic()
 
     logger.info("Waiting for primary worker to be ready...")

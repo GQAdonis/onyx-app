@@ -1,14 +1,21 @@
 import contextvars
 
+from shared_configs.configs import MULTI_TENANT
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
+
 
 # Context variable for the current tenant id
-CURRENT_TENANT_ID_CONTEXTVAR = contextvars.ContextVar("current_tenant_id", default=None)
+CURRENT_TENANT_ID_CONTEXTVAR: contextvars.ContextVar[
+    str | None
+] = contextvars.ContextVar(
+    "current_tenant_id", default=None if MULTI_TENANT else POSTGRES_DEFAULT_SCHEMA
+)
 
 
 """Utils related to contextvars"""
 
 
-def current_tenant_id() -> str:
+def current_tenant_id(strict: bool = True) -> str:
     tenant_id = CURRENT_TENANT_ID_CONTEXTVAR.get()
     if tenant_id is None:
         raise RuntimeError("Tenant ID is not set. This should never happen.")

@@ -46,6 +46,7 @@ from onyx.server.manage.models import UserByEmail
 from onyx.server.settings.store import load_settings
 from onyx.server.settings.store import store_settings
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -61,7 +62,7 @@ async def get_anonymous_user_path_api(
     if tenant_id is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    with get_session_with_tenant(tenant_id=None) as db_session:
+    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
         current_path = get_anonymous_user_path(tenant_id, db_session)
 
     return AnonymousUserPath(anonymous_user_path=current_path)
@@ -78,7 +79,7 @@ async def set_anonymous_user_path_api(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    with get_session_with_tenant(tenant_id=None) as db_session:
+    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
         try:
             modify_anonymous_user_path(tenant_id, anonymous_user_path, db_session)
         except IntegrityError:
@@ -99,7 +100,7 @@ async def login_as_anonymous_user(
     anonymous_user_path: str,
     _: User | None = Depends(optional_user),
 ) -> Response:
-    with get_session_with_tenant(tenant_id=None) as db_session:
+    with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as db_session:
         tenant_id = get_tenant_id_for_anonymous_user_path(
             anonymous_user_path, db_session
         )

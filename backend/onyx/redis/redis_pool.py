@@ -28,6 +28,7 @@ from onyx.configs.app_configs import REDIS_SSL_CERT_REQS
 from onyx.configs.constants import FASTAPI_USERS_AUTH_COOKIE_NAME
 from onyx.configs.constants import REDIS_SOCKET_KEEPALIVE_OPTIONS
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import DEFAULT_REDIS_PREFIX
 
 logger = setup_logger()
 
@@ -154,7 +155,7 @@ class RedisPool:
 
     def get_client(self, tenant_id: str | None) -> Redis:
         if tenant_id is None:
-            tenant_id = "public"
+            tenant_id = DEFAULT_REDIS_PREFIX
         return TenantRedis(tenant_id, connection_pool=self._pool)
 
     def get_replica_client(self, tenant_id: str | None) -> Redis:

@@ -423,8 +423,8 @@ def get_session_with_tenant(
 
     engine = get_sqlalchemy_engine()
 
-    if tenant_id is None:
-        tenant_id = POSTGRES_DEFAULT_SCHEMA
+    if not tenant_id:
+        tenant_id = current_tenant_id()
 
     event.listen(engine, "checkout", set_search_path_on_checkout)
 

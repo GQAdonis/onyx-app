@@ -39,8 +39,8 @@ from onyx.redis.redis_pool import get_redis_client
 from onyx.redis.redis_pool import redis_lock_dump
 from onyx.utils.telemetry import optional_telemetry
 from onyx.utils.telemetry import RecordType
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
-
 
 _MONITORING_SOFT_TIME_LIMIT = 60 * 5  # 5 minutes
 _MONITORING_TIME_LIMIT = _MONITORING_SOFT_TIME_LIMIT + 60  # 6 minutes
@@ -687,7 +687,7 @@ def monitor_background_processes(self: Task, *, tenant_id: str | None) -> None:
         ]
 
         # Collect and log each metric
-        with get_session_with_tenant(tenant_id) as db_session:
+        with get_session_with_tenant(tenant_id=tenant_id) as db_session:
             for metric_fn in metric_functions:
                 metrics = metric_fn()
                 for metric in metrics:
@@ -761,7 +761,7 @@ def cloud_check_alembic() -> bool | None:
             if tenant_id is None:
                 continue
 
-            with get_session_with_tenant(tenant_id=None) as session:
+            with get_session_with_tenant(tenant_id=POSTGRES_DEFAULT_SCHEMA) as session:
                 result = session.execute(
                     text(f'SELECT * FROM "{tenant_id}".alembic_version LIMIT 1')
                 )
