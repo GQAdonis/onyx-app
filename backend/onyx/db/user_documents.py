@@ -13,7 +13,6 @@ from onyx.file_processing.extract_file_text import read_text_file
 from onyx.llm.factory import get_default_llms
 from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.server.documents.connector import upload_files
-from onyx.server.documents.models import FileUploadResponse
 
 
 def create_user_files(
@@ -21,8 +20,9 @@ def create_user_files(
     folder_id: int | None,
     user: User,
     db_session: Session,
-) -> FileUploadResponse:
+) -> list[UserFile]:
     upload_response = upload_files(files, db_session)
+    user_files = []
     content, _ = read_text_file(upload_response.file_paths[0])
     llm, _ = get_default_llms()
 
@@ -42,8 +42,9 @@ def create_user_files(
             token_count=token_count,
         )
         db_session.add(new_file)
+        user_files.append(new_file)
     db_session.commit()
-    return upload_response
+    return user_files
 
 
 def get_user_files_from_folder(folder_id: int, db_session: Session) -> list[UserFile]:

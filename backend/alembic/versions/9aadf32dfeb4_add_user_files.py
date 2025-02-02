@@ -50,6 +50,13 @@ def upgrade() -> None:
             sa.DateTime(),
             default=datetime.datetime.utcnow,
         ),
+        sa.Column(
+            "cc_pair_id",
+            sa.Integer(),
+            sa.ForeignKey("connector_credential_pair.id"),
+            nullable=True,
+            unique=True,
+        ),
     )
 
     # Create persona__user_file table

@@ -17,6 +17,7 @@ class UserFileSnapshot(BaseModel):
     created_at: datetime
     assistant_ids: List[int] = []  # List of assistant IDs
     token_count: int | None
+    indexed: bool
 
     @classmethod
     def from_model(cls, model: UserFile) -> "UserFileSnapshot":
@@ -30,6 +31,9 @@ class UserFileSnapshot(BaseModel):
             created_at=model.created_at,
             assistant_ids=[assistant.id for assistant in model.assistants],
             token_count=model.token_count,
+            indexed=model.cc_pair.last_successful_index_time is not None
+            if model.cc_pair
+            else False,
         )
 
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { File as FileIcon, MoreVertical } from "lucide-react";
+import { CheckCircle, File as FileIcon, MoreVertical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,6 +8,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FileResponse } from "../DocumentsContext";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 interface FileListItemProps {
   file: FileResponse;
@@ -22,6 +28,7 @@ interface FileListItemProps {
   ) => Promise<void>;
   onDelete: (itemId: number, isFolder: boolean) => Promise<void>;
   onDownload: (documentId: string) => Promise<void>;
+  isIndexed: boolean;
 }
 
 export const FileListItem: React.FC<FileListItemProps> = ({
@@ -33,6 +40,7 @@ export const FileListItem: React.FC<FileListItemProps> = ({
   onRename,
   onDelete,
   onDownload,
+  isIndexed,
 }) => {
   return (
     <div
@@ -60,11 +68,29 @@ export const FileListItem: React.FC<FileListItemProps> = ({
           } text-neutral-500`}
         />
         <span
-          className={`max-w-full text-sm truncate ${
+          className={`w-full flex justify-between items-center text-sm truncate ${
             view === "grid" ? "text-center" : ""
           }`}
         >
-          {file.name}
+          <p>{file.name}</p>
+          <TooltipProvider>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <div
+                  className={`h-2 w-2 rounded-full ${
+                    isIndexed ? "bg-transparent" : "bg-red-600"
+                  }`}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                {!isIndexed ? (
+                  <p>Not yet indexed. This will be completed momentarily.</p>
+                ) : (
+                  <p>Indexed</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </span>
       </div>
       <Popover>

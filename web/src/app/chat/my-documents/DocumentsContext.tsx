@@ -28,6 +28,7 @@ export type FileResponse = {
   lastModified: string;
   token_count: number;
   assistant_ids?: number[];
+  indexed: boolean;
 };
 
 export interface FileUploadResponse {
@@ -124,9 +125,6 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
       formData: FormData,
       folderId: number | null
     ): Promise<FileUploadResponse> => {
-      alert("uploadFile");
-      alert(folderId);
-      alert(JSON.stringify(formData));
       if (folderId) {
         formData.append("folder_id", folderId.toString());
       }

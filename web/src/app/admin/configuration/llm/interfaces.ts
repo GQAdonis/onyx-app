@@ -58,6 +58,7 @@ export interface LLMProvider {
   groups: number[];
   display_model_names: string[] | null;
   deployment_name: string | null;
+  model_token_limits: { [key: string]: number } | null;
 }
 
 export interface FullLLMProvider extends LLMProvider {

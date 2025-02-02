@@ -479,6 +479,10 @@ class ConnectorCredentialPair(Base):
         primaryjoin="foreign(ConnectorCredentialPair.creator_id) == remote(User.id)",
     )
 
+    user_file: Mapped["UserFile"] = relationship(
+        "UserFile", back_populates="cc_pair", uselist=False
+    )
+
 
 class Document(Base):
     __tablename__ = "document"
@@ -2117,6 +2121,13 @@ class UserFile(Base):
     user: Mapped["User"] = relationship(back_populates="files")
     folder: Mapped["UserFolder"] = relationship(back_populates="files")
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    cc_pair_id: Mapped[int | None] = mapped_column(
+        ForeignKey("connector_credential_pair.id"), nullable=True, unique=True
+    )
+    cc_pair: Mapped["ConnectorCredentialPair"] = relationship(
+        "ConnectorCredentialPair", back_populates="user_file"
+    )
 
 
 """

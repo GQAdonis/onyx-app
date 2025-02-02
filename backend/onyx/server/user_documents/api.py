@@ -111,16 +111,14 @@ def upload_user_files(
     if folder_id == 0:
         folder_id = None
 
-    file_upload_response = FileUploadResponse(
-        file_paths=create_user_files(files, folder_id, user, db_session).file_paths
-    )
-    for _, path in enumerate(file_upload_response.file_paths):
+    user_files = create_user_files(files, folder_id, user, db_session)
+    for user_file in user_files:
         connector_base = ConnectorBase(
             name=f"UserFile-{int(time.time())}",
             source=DocumentSource.FILE,
             input_type=InputType.LOAD_STATE,
             connector_specific_config={
-                "file_locations": [path],
+                "file_locations": [user_file.file_id],
             },
             refresh_freq=None,
             prune_freq=None,
@@ -138,10 +136,11 @@ def upload_user_files(
             curator_public=True,
             groups=[],
             name=f"UserFileCredential-{int(time.time())}",
+            is_user_file=True,
         )
         credential = create_credential(credential_info, user, db_session)
 
-        add_credential_to_connector(
+        cc_pair = add_credential_to_connector(
             db_session=db_session,
             user=user,
             connector_id=connector.id,
@@ -151,11 +150,16 @@ def upload_user_files(
             auto_sync_options=None,
             groups=[],
         )
+        user_file.cc_pair_id = cc_pair.data
+        print("A")
+        db_session.commit()
 
     db_session.commit()
     # TODO: functional document indexing
     # trigger_document_indexing(db_session, user.id)
-    return file_upload_response
+    return FileUploadResponse(
+        file_paths=[user_file.file_id for user_file in user_files],
+    )
 
 
 @router.put("/user/folder/{folder_id}")
@@ -382,20 +386,16 @@ def create_file_from_link(
         file_content = parsed_html.cleaned_text.encode()
 
         file = UploadFile(filename=file_name, file=io.BytesIO(file_content))
-        file_upload_response = FileUploadResponse(
-            file_paths=create_user_files(
-                [file], request.folder_id, user, db_session
-            ).file_paths
-        )
+        user_files = create_user_files([file], request.folder_id, user, db_session)
 
         # Create connector and credential (same as in upload_user_files)
-        for path in file_upload_response.file_paths:
+        for user_file in user_files:
             connector_base = ConnectorBase(
                 name=f"UserFile-{int(time.time())}",
                 source=DocumentSource.FILE,
                 input_type=InputType.LOAD_STATE,
                 connector_specific_config={
-                    "file_locations": [path],
+                    "file_locations": [user_file.file_id],
                 },
                 refresh_freq=None,
                 prune_freq=None,
@@ -416,7 +416,7 @@ def create_file_from_link(
             )
             credential = create_credential(credential_info, user, db_session)
 
-            add_credential_to_connector(
+            cc_pair = add_credential_to_connector(
                 db_session=db_session,
                 user=user,
                 connector_id=connector.id,
@@ -426,7 +426,12 @@ def create_file_from_link(
                 auto_sync_options=None,
                 groups=[],
             )
+            user_file.cc_pair_id = cc_pair.data
+            db_session.commit()
 
-        return file_upload_response
+        db_session.commit()
+        return FileUploadResponse(
+            file_paths=[user_file.file_id for user_file in user_files]
+        )
     except requests.RequestException as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
