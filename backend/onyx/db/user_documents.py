@@ -9,6 +9,9 @@ from onyx.db.models import Persona__UserFile
 from onyx.db.models import User
 from onyx.db.models import UserFile
 from onyx.db.models import UserFolder
+from onyx.file_processing.extract_file_text import read_text_file
+from onyx.llm.factory import get_default_llms
+from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.server.documents.connector import upload_files
 from onyx.server.documents.models import FileUploadResponse
 
@@ -20,6 +23,15 @@ def create_user_files(
     db_session: Session,
 ) -> FileUploadResponse:
     upload_response = upload_files(files, db_session)
+    content, _ = read_text_file(upload_response.file_paths[0])
+    llm, _ = get_default_llms()
+
+    llm_tokenizer = get_tokenizer(
+        model_name=llm.config.model_name,
+        provider_type=llm.config.model_provider,
+    )
+    token_count = len(llm_tokenizer.encode(content))
+
     for file_path, file in zip(upload_response.file_paths, files):
         new_file = UserFile(
             user_id=user.id if user else None,
@@ -27,6 +39,7 @@ def create_user_files(
             file_id=file_path,
             document_id=file_path,
             name=file.filename,
+            token_count=token_count,
         )
         db_session.add(new_file)
     db_session.commit()

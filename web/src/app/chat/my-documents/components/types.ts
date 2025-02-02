@@ -4,18 +4,14 @@ export interface UserFolder {
   id: number;
   name: string;
   parent_id: number | null;
-}
-
-export interface UserFolder {
-  id: number;
-  name: string;
-  parent_folder_id: number | null;
+  token_count: number | null;
 }
 
 export interface UserFile {
   id: number;
   name: string;
   parent_folder_id: number | null;
+  token_count: number | null;
 }
 
 export interface FolderNode extends UserFolder {

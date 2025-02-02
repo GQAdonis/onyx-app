@@ -2116,6 +2116,7 @@ class UserFile(Base):
     )
     user: Mapped["User"] = relationship(back_populates="files")
     folder: Mapped["UserFolder"] = relationship(back_populates="files")
+    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 """

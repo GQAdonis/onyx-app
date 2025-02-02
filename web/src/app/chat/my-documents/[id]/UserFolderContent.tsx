@@ -67,6 +67,7 @@ const ModelSelector: React.FC<{
 export default function UserFolderContent({ folderId }: { folderId: number }) {
   const router = useRouter();
   const { assistants } = useAssistants();
+
   const {
     getFolderDetails,
     updateFolderDetails,
@@ -78,17 +79,21 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   } = useDocumentsContext();
 
   const { llmProviders } = useChatContext();
-  const modelDescriptors = [
-    ...llmProviders.map((provider) => ({
-      modelName: provider.default_model_name,
-      provider: provider.provider,
-      maxTokens: provider.model_token_limits?.[provider.default_model_name],
-    })),
-  ] as LLMModelDescriptor[];
+
+  const modelDescriptors = llmProviders.flatMap((provider) =>
+    Object.entries(provider.model_token_limits ?? {}).map(
+      ([modelName, maxTokens]) => ({
+        modelName,
+        provider: provider.provider,
+        maxTokens,
+      })
+    )
+  ) as LLMModelDescriptor[];
+
   const [folderDetails, setFolderDetails] = useState<FolderResponse | null>(
     null
   );
-  alert(JSON.stringify(llmProviders));
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -192,7 +197,10 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
     );
   }
 
-  const totalTokens = folderDetails.files.length * 1000; // Mock data: assume 1000 tokens per file
+  const totalTokens = folderDetails.files.reduce(
+    (acc, file) => acc + file.token_count,
+    0
+  );
   const maxTokens = selectedModel.maxTokens;
   const tokenPercentage = (totalTokens / maxTokens) * 100;
 

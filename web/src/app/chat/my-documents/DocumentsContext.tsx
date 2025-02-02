@@ -26,7 +26,7 @@ export type FileResponse = {
   size: number;
   type: string;
   lastModified: string;
-  tokens: number;
+  token_count: number;
   assistant_ids?: number[];
 };
 

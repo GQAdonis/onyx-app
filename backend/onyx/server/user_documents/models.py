@@ -16,6 +16,7 @@ class UserFileSnapshot(BaseModel):
     file_id: str
     created_at: datetime
     assistant_ids: List[int] = []  # List of assistant IDs
+    token_count: int | None
 
     @classmethod
     def from_model(cls, model: UserFile) -> "UserFileSnapshot":
@@ -28,6 +29,7 @@ class UserFileSnapshot(BaseModel):
             file_id=model.file_id,
             created_at=model.created_at,
             assistant_ids=[assistant.id for assistant in model.assistants],
+            token_count=model.token_count,
         )
 
 
@@ -39,6 +41,7 @@ class UserFolderSnapshot(BaseModel):
     created_at: datetime
     user_id: int | None
     assistant_ids: List[int] = []  # List of assistant IDs
+    token_count: int | None
 
     @classmethod
     def from_model(cls, model: UserFolder) -> "UserFolderSnapshot":
@@ -50,6 +53,7 @@ class UserFolderSnapshot(BaseModel):
             created_at=model.created_at,
             user_id=model.user_id,
             assistant_ids=[assistant.id for assistant in model.assistants],
+            token_count=sum(file.token_count for file in model.files),
         )
 
 

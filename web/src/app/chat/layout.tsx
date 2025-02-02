@@ -37,7 +37,9 @@ export default async function Layout({
     ccPairs,
     inputPrompts,
   } = data;
+  console.log("-----llmProviders-----");
 
+  console.log(llmProviders);
   return (
     <>
       <InstantSSRAutoRefresh />
