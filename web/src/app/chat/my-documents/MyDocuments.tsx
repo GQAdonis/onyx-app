@@ -215,7 +215,7 @@ export default function MyDocuments() {
       .sort((a, b) => {
         if (sortType === SortType.TimeCreated) {
           return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
         } else if (sortType === SortType.Alphabetical) {
           return a.name.localeCompare(b.name);
@@ -228,7 +228,7 @@ export default function MyDocuments() {
     <div className="min-h-full w-full min-w-0 flex-1 mx-auto mt-4 w-full max-w-5xl flex-1 px-4 pb-20 md:pl-8 lg:mt-6 md:pr-8 2xl:pr-14">
       <header className="flex bg-background w-full items-center justify-between gap-4  pt-2  -translate-y-px">
         <h1 className=" flex items-center gap-1.5 text-lg font-medium leading-tight tracking-tight max-md:hidden">
-          My Knowledge Groups
+          Knowledge Groups
         </h1>
         <div className="flex items-center gap-2">
           <CreateEntityModal
@@ -286,7 +286,7 @@ export default function MyDocuments() {
                   folder={folder}
                   onClick={handleFolderClick}
                   description={folder.description}
-                  lastUpdated="5 months ago"
+                  lastUpdated={folder.created_at}
                   onRename={() => onRenameItem(folder.id, folder.name, true)}
                   onDelete={() => handleDeleteItem(folder.id, true)}
                   onMove={() => handleMoveItem(folder.id, currentFolder, true)}

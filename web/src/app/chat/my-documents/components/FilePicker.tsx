@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import {
@@ -9,6 +9,7 @@ import {
   FileIcon,
   PlusIcon,
   Router,
+  X,
 } from "lucide-react";
 import { SelectedItemsList } from "./SelectedItemsList";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +17,7 @@ import {
   useDocumentsContext,
   FolderResponse,
   FileResponse,
+  FileUploadResponse,
 } from "../DocumentsContext";
 import {
   DndContext,
@@ -87,6 +89,10 @@ const DraggableItem: React.FC<{
     zIndex: isDragging ? 1 : "auto",
   };
 
+  const selectedClassName = isSelected
+    ? "bg-blue-100 border-blue-300 shadow-sm"
+    : "hover:bg-gray-100";
+
   if (type === "folder") {
     return (
       <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -95,6 +101,7 @@ const DraggableItem: React.FC<{
           onClick={onClick || (() => {})}
           onSelect={() => {}}
           isSelected={isSelected}
+          allFilesSelected={false}
         />
       </div>
     );
@@ -106,9 +113,9 @@ const DraggableItem: React.FC<{
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex items-center p-2 hover:bg-gray-100 cursor-pointer rounded-md ${
+      className={`flex items-center p-2 cursor-pointer rounded-md ${
         isDragging ? "bg-gray-200" : ""
-      }`}
+      } ${selectedClassName}`}
       onClick={onClick}
     >
       <FileIcon className="mr-2 text-gray-500" />
@@ -122,10 +129,16 @@ const FilePickerFolderItem: React.FC<{
   onClick: () => void;
   onSelect: () => void;
   isSelected: boolean;
-}> = ({ folder, onClick, onSelect, isSelected }) => {
+  allFilesSelected: boolean;
+}> = ({ folder, onClick, onSelect, isSelected, allFilesSelected }) => {
+  const selectedClassName =
+    isSelected || allFilesSelected
+      ? "from-blue-100 to-blue-50 border-blue-300 shadow-sm"
+      : "from-[#f2f0e8]/80 to-[#F7F6F0] hover:from-[#f2f0e8] hover:to-[#F7F6F0]";
+
   return (
     <div
-      className="from-[#f2f0e8]/80 to-[#F7F6F0] border-0.5 border-border hover:from-[#f2f0e8] hover:to-[#F7F6F0] hover:border-border-200 text-md group relative flex cursor-pointer flex-col overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.99]"
+      className={`${selectedClassName} border-0.5 border-border hover:border-border-200 text-md group relative flex cursor-pointer flex-col overflow-x-hidden text-ellipsis rounded-xl bg-gradient-to-b py-4 pl-5 pr-4 transition-all ease-in-out hover:shadow-sm active:scale-[0.99]`}
       onClick={onClick}
     >
       <div className="flex flex-col flex-1">
@@ -145,13 +158,19 @@ const FilePickerFolderItem: React.FC<{
           <Button
             variant="ghost"
             size="sm"
-            className={`ml-2 ${isSelected ? "text-blue-500" : "text-gray-500"}`}
+            className={`ml-2 ${
+              isSelected || allFilesSelected ? "text-blue-500" : "text-gray-500"
+            }`}
             onClick={(e) => {
               e.stopPropagation();
               onSelect();
             }}
           >
-            <PlusIcon size={16} />
+            {isSelected || allFilesSelected ? (
+              <X size={16} />
+            ) : (
+              <PlusIcon size={16} />
+            )}
           </Button>
         </div>
         {folder.description && (
@@ -203,11 +222,14 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     summarizeDocument,
     addToCollection,
     downloadItem,
+    createFileFromLink,
   } = useDocumentsContext();
 
   const router = useRouter();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [links, setLinks] = useState<string[]>([]);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [isCreatingFileFromLink, setIsCreatingFileFromLink] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const [view, setView] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
@@ -226,6 +248,13 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
+  );
+
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<number>>(
+    new Set()
+  );
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<number>>(
+    new Set()
   );
 
   useEffect(() => {
@@ -268,33 +297,116 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   };
 
   const handleFileSelect = (file: FileResponse) => {
-    if (selectedFiles.some((f) => f.id === file.id)) {
-      removeSelectedFile(file);
-    } else {
-      addSelectedFile(file);
+    setSelectedFileIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(file.id)) {
+        newSet.delete(file.id);
+      } else {
+        newSet.add(file.id);
+      }
+      return newSet;
+    });
+
+    // Check if the file's folder should be unselected
+    if (file.folder_id) {
+      setSelectedFolderIds((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(file.folder_id!)) {
+          const folder = folders.find((f) => f.id === file.folder_id);
+          if (folder) {
+            const allFilesSelected = folder.files.every(
+              (f) => selectedFileIds.has(f.id) || f.id === file.id
+            );
+            if (!allFilesSelected) {
+              newSet.delete(file.folder_id!);
+            }
+          }
+        }
+        return newSet;
+      });
     }
   };
 
   const handleFolderSelect = (folder: FolderResponse) => {
-    if (selectedFolders.some((f) => f.id === folder.id)) {
-      removeSelectedFolder(folder);
-    } else {
-      addSelectedFolder(folder);
-    }
+    setSelectedFolderIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(folder.id)) {
+        newSet.delete(folder.id);
+      } else {
+        newSet.add(folder.id);
+      }
+      return newSet;
+    });
+
+    // Update selectedFileIds based on folder selection
+    setSelectedFileIds((prev) => {
+      const newSet = new Set(prev);
+      folder.files.forEach((file) => {
+        if (selectedFolderIds.has(folder.id)) {
+          newSet.delete(file.id);
+        } else {
+          newSet.add(file.id);
+        }
+      });
+      return newSet;
+    });
   };
+
+  const selectedItems = useMemo(() => {
+    const items: { folders: FolderResponse[]; files: FileResponse[] } = {
+      folders: [],
+      files: [],
+    };
+    folders.forEach((folder) => {
+      if (selectedFolderIds.has(folder.id)) {
+        items.folders.push(folder);
+      } else {
+        const selectedFilesInFolder = folder.files.filter((file) =>
+          selectedFileIds.has(file.id)
+        );
+        if (selectedFilesInFolder.length === folder.files.length) {
+          items.folders.push(folder);
+        } else {
+          items.files.push(...selectedFilesInFolder);
+        }
+      }
+    });
+    return items;
+  }, [folders, selectedFileIds, selectedFolderIds]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log("File upload started");
     const files = e.target.files;
     if (files) {
-      setUploadedFiles((prev) => [...prev, ...Array.from(files)]);
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const formData = new FormData();
-        formData.append("file", file);
-        await uploadFile(formData, currentFolder || 0);
+      setIsUploadingFile(true);
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const formData = new FormData();
+          formData.append("files", file);
+          formData.append("folder_id", (currentFolder || 0).toString());
+          const response: FileUploadResponse = await uploadFile(formData, null);
+
+          if (response.file_paths && response.file_paths.length > 0) {
+            const uploadedFile: FileResponse = {
+              id: Date.now(),
+              name: file.name,
+              document_id: response.file_paths[0],
+              folder_id: currentFolder || null,
+              size: file.size,
+              type: file.type,
+              lastModified: new Date().toISOString(),
+              token_count: 0,
+            };
+            addSelectedFile(uploadedFile);
+          }
+        }
+        await refreshFolders();
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      } finally {
+        setIsUploadingFile(false);
       }
-      refreshFolders();
     }
   };
 
@@ -331,6 +443,38 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     setIsHoveringRight(false);
   };
 
+  const handleCreateFileFromLink = async () => {
+    if (!linkUrl) return;
+    setIsCreatingFileFromLink(true);
+    try {
+      const response: FileUploadResponse = await createFileFromLink(
+        linkUrl,
+        currentFolder
+      );
+      setLinkUrl("");
+
+      if (response.file_paths && response.file_paths.length > 0) {
+        const createdFile: FileResponse = {
+          id: Date.now(),
+          name: new URL(linkUrl).hostname,
+          document_id: response.file_paths[0],
+          folder_id: currentFolder || null,
+          size: 0,
+          type: "link",
+          lastModified: new Date().toISOString(),
+          token_count: 0,
+        };
+        addSelectedFile(createdFile);
+      }
+
+      await refreshFolders();
+    } catch (error) {
+      console.error("Error creating file from link:", error);
+    } finally {
+      setIsCreatingFileFromLink(false);
+    }
+  };
+
   const filteredFolders = folders.filter((folder) =>
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -363,6 +507,10 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     return null;
   };
 
+  const isAllFilesInFolderSelected = (folder: FolderResponse) => {
+    return folder.files.every((file) => selectedFileIds.has(file.id));
+  };
+
   return (
     <Modal
       hideDividerForTitle
@@ -370,228 +518,198 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
       className="max-w-4xl flex flex-col w-full !overflow-hidden h-[70vh]"
       title={title}
     >
-      <div className="flex w-full items-center flex-col h-full">
-        <div className="grid h-full grid-cols-2 overflow-y-hidden w-full divide-x divide-gray-200">
-          <div className="w-full pb-4 overflow-y-auto">
-            <div className="mb-4 flex gap-x-2 w-full pr-4">
-              <div className="w-full relative">
-                <input
-                  type="text"
-                  placeholder="Search folders..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:border-transparent"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-text-dark"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
+      <div className="grid h-full grid-cols-2 overflow-y-hidden w-full divide-x divide-gray-200">
+        <div className="w-full h-full pb-4 overflow-y-auto">
+          <div className="mb-4 flex gap-x-2 w-full pr-4">
+            <div className="w-full relative">
+              <input
+                type="text"
+                placeholder="Search folders..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-text-dark"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </div>
             </div>
-
-            {filteredFolders.length + currentFolderFiles.length > 0 ? (
-              <div className="flex-grow overflow-y-auto pr-4">
-                {renderNavigation()}
-                <DndContext
-                  sensors={sensors}
-                  onDragStart={handleDragStart}
-                  onDragMove={handleDragMove}
-                  onDragEnd={handleDragEnd}
-                  onDragCancel={handleDragCancel}
-                  collisionDetection={closestCenter}
-                >
-                  <SortableContext
-                    items={[
-                      ...filteredFolders.map((f) => `folder-${f.id}`),
-                      ...currentFolderFiles.map((f) => `file-${f.id}`),
-                    ]}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-3">
-                      {currentFolder === null
-                        ? filteredFolders.map((folder) => (
-                            <FilePickerFolderItem
-                              key={`folder-${folder.id}`}
-                              folder={folder}
-                              onClick={() => handleFolderClick(folder.id)}
-                              onSelect={() => handleFolderSelect(folder)}
-                              isSelected={selectedFolders.some(
-                                (f) => f.id === folder.id
-                              )}
-                            />
-                          ))
-                        : currentFolderFiles.map((file) => (
-                            <DraggableItem
-                              key={`file-${file.id}`}
-                              id={`file-${file.id}`}
-                              type="file"
-                              item={file}
-                              onClick={() => handleFileSelect(file)}
-                              isSelected={selectedFiles.some(
-                                (f) => f.id === file.id
-                              )}
-                            />
-                          ))}
-                    </div>
-                  </SortableContext>
-
-                  <DragOverlay>
-                    {activeId ? (
-                      <DraggableItem
-                        id={activeId}
-                        type={activeId.startsWith("folder") ? "folder" : "file"}
-                        item={
-                          activeId.startsWith("folder")
-                            ? folders.find(
-                                (f) =>
-                                  f.id === parseInt(activeId.split("-")[1], 10)
-                              )!
-                            : currentFolderFiles.find(
-                                (f) =>
-                                  f.id === parseInt(activeId.split("-")[1], 10)
-                              )!
-                        }
-                        isSelected={
-                          activeId.startsWith("folder")
-                            ? selectedFolders.some(
-                                (f) =>
-                                  f.id === parseInt(activeId.split("-")[1], 10)
-                              )
-                            : selectedFiles.some(
-                                (f) =>
-                                  f.id === parseInt(activeId.split("-")[1], 10)
-                              )
-                        }
-                      />
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              </div>
-            ) : folders.length > 0 ? (
-              <div className="flex-grow overflow-y-auto px-4">
-                <p className="text-text-subtle">No files or folders found</p>
-              </div>
-            ) : (
-              <div className="flex-grow flex-col overflow-y-auto px-4 flex items-start justify-start gap-y-2">
-                <p className="text-sm text-muted-foreground">
-                  No files or folders found
-                </p>
-                <a
-                  href="/chat/my-documents"
-                  className="inline-flex items-center text-sm justify-center"
-                >
-                  <FolderIcon className="mr-2 h-4 w-4" />
-                  Create folder in My Documents
-                </a>
-              </div>
-            )}
           </div>
-          <div
-            className={`w-full px-4 pb-4 flex flex-col h-[450px] ${
-              isHoveringRight ? "bg-blue-50" : ""
-            }`}
-            onDragEnter={() => setIsHoveringRight(true)}
-            onDragLeave={() => setIsHoveringRight(false)}
-          >
-            <div className="shrink flex h-full overflow-y-auto mb-1">
-              <SelectedItemsList
-                folders={selectedFolders}
-                files={selectedFiles}
-                onRemoveFile={removeSelectedFile}
-                onRemoveFolder={removeSelectedFolder}
+
+          {filteredFolders.length + currentFolderFiles.length > 0 ? (
+            <div className="flex-grow overflow-y-auto pr-4">
+              {renderNavigation()}
+              <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+                collisionDetection={closestCenter}
+              >
+                <SortableContext
+                  items={[
+                    ...filteredFolders.map((f) => `folder-${f.id}`),
+                    ...currentFolderFiles.map((f) => `file-${f.id}`),
+                  ]}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {currentFolder === null
+                      ? filteredFolders.map((folder) => (
+                          <FilePickerFolderItem
+                            key={`folder-${folder.id}`}
+                            folder={folder}
+                            onClick={() => handleFolderClick(folder.id)}
+                            onSelect={() => handleFolderSelect(folder)}
+                            isSelected={selectedFolderIds.has(folder.id)}
+                            allFilesSelected={isAllFilesInFolderSelected(
+                              folder
+                            )}
+                          />
+                        ))
+                      : currentFolderFiles.map((file) => (
+                          <DraggableItem
+                            key={`file-${file.id}`}
+                            id={`file-${file.id}`}
+                            type="file"
+                            item={file}
+                            onClick={() => handleFileSelect(file)}
+                            isSelected={selectedFileIds.has(file.id)}
+                          />
+                        ))}
+                  </div>
+                </SortableContext>
+
+                <DragOverlay>
+                  {activeId ? (
+                    <DraggableItem
+                      id={activeId}
+                      type={activeId.startsWith("folder") ? "folder" : "file"}
+                      item={
+                        activeId.startsWith("folder")
+                          ? folders.find(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )!
+                          : currentFolderFiles.find(
+                              (f) =>
+                                f.id === parseInt(activeId.split("-")[1], 10)
+                            )!
+                      }
+                      isSelected={
+                        activeId.startsWith("folder")
+                          ? selectedFolderIds.has(
+                              parseInt(activeId.split("-")[1], 10)
+                            )
+                          : selectedFileIds.has(
+                              parseInt(activeId.split("-")[1], 10)
+                            )
+                      }
+                    />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </div>
+          ) : folders.length > 0 ? (
+            <div className="flex-grow overflow-y-auto px-4">
+              <p className="text-text-subtle">No files or folders found</p>
+            </div>
+          ) : (
+            <div className="flex-grow flex-col overflow-y-auto px-4 flex items-start justify-start gap-y-2">
+              <p className="text-sm text-muted-foreground">
+                No files or folders found
+              </p>
+              <a
+                href="/chat/my-documents"
+                className="inline-flex items-center text-sm justify-center"
+              >
+                <FolderIcon className="mr-2 h-4 w-4" />
+                Create folder in My Documents
+              </a>
+            </div>
+          )}
+        </div>
+        <div
+          className={`w-full h-full px-4 pb-4 flex flex-col h-[450px] ${
+            isHoveringRight ? "bg-blue-50" : ""
+          }`}
+          onDragEnter={() => setIsHoveringRight(true)}
+          onDragLeave={() => setIsHoveringRight(false)}
+        >
+          <div className="shrink flex h-full overflow-y-auto mb-1">
+            <SelectedItemsList
+              folders={selectedItems.folders}
+              files={selectedItems.files}
+              onRemoveFile={(file) => handleFileSelect(file)}
+              onRemoveFolder={(folder) => handleFolderSelect(folder)}
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <div className="p-4 flex-none border rounded-lg bg-neutral-50">
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer flex items-center justify-center space-x-2"
+              >
+                <UploadIcon className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {isUploadingFile ? "Uploading..." : "Upload files"}
+                </span>
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={isUploadingFile}
               />
             </div>
 
+            <Separator className="my-2" />
+
             <div className="flex flex-col">
-              <div className="p-4 flex-none border rounded-lg bg-neutral-50">
-                <label
-                  htmlFor="file-upload"
-                  className="cursor-pointer flex items-center justify-center space-x-2"
-                >
-                  <UploadIcon className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Upload files
-                  </span>
-                </label>
-                <input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
+              <div className="flex flex-col gap-y-2">
+                <p className="text-sm text-text-subtle">
+                  Add links to the context
+                </p>
               </div>
-
-              <Separator className="my-2" />
-
-              <div className="flex flex-col">
-                <div className="flex flex-col gap-y-2">
-                  <p className="text-sm text-text-subtle">
-                    Add links to the context
-                  </p>
+              <form
+                className="flex gap-x-4 mt-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCreateFileFromLink();
+                }}
+              >
+                <div className="w-full gap-x-2 flex">
+                  <input
+                    type="url"
+                    placeholder="Enter URL"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={isCreatingFileFromLink || !linkUrl}
+                  >
+                    {isCreatingFileFromLink ? "Creating..." : "Add"}
+                  </Button>
                 </div>
-                <form
-                  className="flex gap-x-4 mt-2"
-                  onSubmit={(e) => e.preventDefault()}
-                >
-                  <div className="w-full gap-x-2 flex">
-                    <input
-                      type="url"
-                      placeholder="Enter URL"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                      onChange={(e) => {
-                        // Handle URL input change
-                        console.log(e.target.value);
-                        // You might want to add state to store this value
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        const input = e.currentTarget.form?.querySelector(
-                          'input[type="url"]'
-                        ) as HTMLInputElement;
-                        if (input && input.value) {
-                          setLinks((prevLinks) => [...prevLinks, input.value]);
-                          input.value = "";
-                        }
-                      }}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </form>
-              </div>
+              </form>
             </div>
-          </div>
-        </div>
-        <div className="pt-4 flex-col w-full flex border-t mt-auto items-center justify-between">
-          <div className="mb-4 font-medium text-lg text-text-dark">
-            Total items: {selectedFiles.length + selectedFolders.length}
-          </div>
-          <div className="flex justify-center">
-            <Button
-              className="text-lg"
-              size="lg"
-              onClick={() => {
-                onSave();
-                onClose();
-              }}
-              variant="default"
-            >
-              {buttonContent}
-            </Button>
           </div>
         </div>
       </div>

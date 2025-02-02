@@ -1,7 +1,10 @@
+import io
 import time
 from typing import List
 
+import requests
 import sqlalchemy.exc
+from bs4 import BeautifulSoup
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import File
@@ -27,6 +30,7 @@ from onyx.db.user_documents import share_file_with_assistant
 from onyx.db.user_documents import share_folder_with_assistant
 from onyx.db.user_documents import unshare_file_with_assistant
 from onyx.db.user_documents import unshare_folder_with_assistant
+from onyx.file_processing.html_utils import web_html_cleanup
 from onyx.server.documents.models import ConnectorBase
 from onyx.server.documents.models import CredentialBase
 from onyx.server.documents.models import FileUploadResponse
@@ -104,10 +108,13 @@ def upload_user_files(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
 ) -> FileUploadResponse:
+    if folder_id == 0:
+        folder_id = None
+
     file_upload_response = FileUploadResponse(
         file_paths=create_user_files(files, folder_id, user, db_session).file_paths
     )
-    for path in file_upload_response.file_paths:
+    for _, path in enumerate(file_upload_response.file_paths):
         connector_base = ConnectorBase(
             name=f"UserFile-{int(time.time())}",
             source=DocumentSource.FILE,
@@ -145,6 +152,7 @@ def upload_user_files(
             groups=[],
         )
 
+    db_session.commit()
     # TODO: functional document indexing
     # trigger_document_indexing(db_session, user.id)
     return file_upload_response
@@ -350,3 +358,75 @@ def unshare_folder(
     return MessageResponse(
         message="Folder and its files unshared successfully from the assistant"
     )
+
+
+class CreateFileFromLinkRequest(BaseModel):
+    url: str
+    folder_id: int | None
+
+
+@router.post("/user/file/create-from-link")
+def create_file_from_link(
+    request: CreateFileFromLinkRequest,
+    user: User = Depends(current_user),
+    db_session: Session = Depends(get_session),
+) -> FileUploadResponse:
+    try:
+        response = requests.get(request.url)
+        response.raise_for_status()
+        content = response.text
+        soup = BeautifulSoup(content, "html.parser")
+        parsed_html = web_html_cleanup(soup, mintlify_cleanup_enabled=False)
+
+        file_name = f"{parsed_html.title or 'Untitled'}.txt"
+        file_content = parsed_html.cleaned_text.encode()
+
+        file = UploadFile(filename=file_name, file=io.BytesIO(file_content))
+        file_upload_response = FileUploadResponse(
+            file_paths=create_user_files(
+                [file], request.folder_id, user, db_session
+            ).file_paths
+        )
+
+        # Create connector and credential (same as in upload_user_files)
+        for path in file_upload_response.file_paths:
+            connector_base = ConnectorBase(
+                name=f"UserFile-{int(time.time())}",
+                source=DocumentSource.FILE,
+                input_type=InputType.LOAD_STATE,
+                connector_specific_config={
+                    "file_locations": [path],
+                },
+                refresh_freq=None,
+                prune_freq=None,
+                indexing_start=None,
+            )
+            connector = create_connector(
+                db_session=db_session,
+                connector_data=connector_base,
+            )
+
+            credential_info = CredentialBase(
+                credential_json={},
+                admin_public=True,
+                source=DocumentSource.FILE,
+                curator_public=True,
+                groups=[],
+                name=f"UserFileCredential-{int(time.time())}",
+            )
+            credential = create_credential(credential_info, user, db_session)
+
+            add_credential_to_connector(
+                db_session=db_session,
+                user=user,
+                connector_id=connector.id,
+                credential_id=credential.id,
+                cc_pair_name=f"UserFileCCPair-{int(time.time())}",
+                access_type=AccessType.PUBLIC,
+                auto_sync_options=None,
+                groups=[],
+            )
+
+        return file_upload_response
+    except requests.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")

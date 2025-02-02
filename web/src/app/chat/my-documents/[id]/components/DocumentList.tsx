@@ -70,7 +70,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
             onDownload={onDownload}
             onSelect={() =>
               setPresentingDocument({
-                semantic_identifier: file.id.toString(),
+                semantic_identifier: file.name,
                 document_id: file.document_id,
               })
             }

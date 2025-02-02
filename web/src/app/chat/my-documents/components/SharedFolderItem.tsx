@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ItemContextMenu } from "./ContextMenu";
+import { getTimeAgoString } from "@/lib/dateUtils";
 
 interface SharedFolderItemProps {
   folder: {
@@ -72,7 +73,10 @@ export const SharedFolderItem: React.FC<SharedFolderItemProps> = ({
         <div className="text-text-500 mt-3 flex justify-between text-xs">
           &nbsp;
           <span>
-            Updated <span data-state="closed">{lastUpdated}</span>
+            Updated{" "}
+            <span data-state="closed">
+              {getTimeAgoString(new Date(lastUpdated))}
+            </span>
           </span>
         </div>
       )}

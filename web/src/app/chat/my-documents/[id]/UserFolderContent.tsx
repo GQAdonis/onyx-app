@@ -13,6 +13,7 @@ import {
   Users,
   MessageSquare,
   Database,
+  Link,
 } from "lucide-react";
 import { useDocumentsContext, FolderResponse } from "../DocumentsContext";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
     renameItem,
     deleteItem,
     uploadFile,
+    createFileFromLink,
   } = useDocumentsContext();
 
   const { llmProviders } = useChatContext();
@@ -106,6 +108,9 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   const [selectedModel, setSelectedModel] = useState<LLMModelDescriptor>(
     modelDescriptors[0]
   );
+
+  const [linkUrl, setLinkUrl] = useState("");
+  const [isCreatingFileFromLink, setIsCreatingFileFromLink] = useState(false);
 
   const refreshFolderDetails = useCallback(async () => {
     try {
@@ -176,6 +181,21 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
     } finally {
       setIsLoading(false);
       setShowUploadWarning(false);
+    }
+  };
+
+  const handleCreateFileFromLink = async () => {
+    if (!linkUrl) return;
+    setIsCreatingFileFromLink(true);
+    try {
+      await createFileFromLink(linkUrl, folderId);
+      setLinkUrl("");
+      await refreshFolderDetails();
+    } catch (error) {
+      console.error("Error creating file from link:", error);
+      setError("Failed to create file from link. Please try again.");
+    } finally {
+      setIsCreatingFileFromLink(false);
     }
   };
 
@@ -370,6 +390,32 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
                   Not shared with any assistants
                 </div>
               ))}
+          </div>
+
+          <div className="p-4 border-b border-[#d9d9d0]">
+            <div className="flex items-center mb-2">
+              <Link className="w-5 h-4 mr-3 text-[#13343a]" />
+              <span className="text-[#13343a] text-sm font-medium leading-tight">
+                Create File from Link
+              </span>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="Enter URL"
+                className="flex-grow mr-2 px-2 py-1 border border-gray-300 rounded"
+              />
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleCreateFileFromLink}
+                disabled={isCreatingFileFromLink || !linkUrl}
+              >
+                {isCreatingFileFromLink ? "Creating..." : "Create"}
+              </Button>
+            </div>
           </div>
 
           <div className="p-4">

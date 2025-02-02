@@ -15,7 +15,7 @@ export interface FolderResponse {
   description: string;
   files: FileResponse[];
   assistant_ids?: number[];
-  createdAt: string;
+  created_at: string;
 }
 
 export type FileResponse = {
@@ -29,6 +29,10 @@ export type FileResponse = {
   token_count: number;
   assistant_ids?: number[];
 };
+
+export interface FileUploadResponse {
+  file_paths: string[];
+}
 
 interface DocumentsContextType {
   folders: FolderResponse[];
@@ -63,7 +67,10 @@ interface DocumentsContextType {
   summarizeDocument: (documentId: string) => Promise<string>;
   addToCollection: (documentId: string, collectionId: string) => Promise<void>;
   isLoading: boolean;
-  uploadFile: (formData: FormData, folderId: number) => Promise<void>;
+  uploadFile: (
+    formData: FormData,
+    folderId: number | null
+  ) => Promise<FileUploadResponse>;
   selectedFiles: FileResponse[];
   selectedFolders: FolderResponse[];
   addSelectedFile: (file: FileResponse) => void;
@@ -71,6 +78,10 @@ interface DocumentsContextType {
   addSelectedFolder: (folder: FolderResponse) => void;
   removeSelectedFolder: (folder: FolderResponse) => void;
   clearSelectedItems: () => void;
+  createFileFromLink: (
+    url: string,
+    folderId: number | null
+  ) => Promise<FileUploadResponse>;
 }
 
 const DocumentsContext = createContext<DocumentsContextType | undefined>(
@@ -104,12 +115,21 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
       throw new Error("Failed to fetch folders");
     }
     const data = await response.json();
+
     setFolders(data);
   }, []);
 
   const uploadFile = useCallback(
-    async (formData: FormData, folderId: number) => {
-      formData.append("folder_id", folderId.toString());
+    async (
+      formData: FormData,
+      folderId: number | null
+    ): Promise<FileUploadResponse> => {
+      alert("uploadFile");
+      alert(folderId);
+      alert(JSON.stringify(formData));
+      if (folderId) {
+        formData.append("folder_id", folderId.toString());
+      }
       const response = await fetch("/api/user/file/upload", {
         method: "POST",
         body: formData,
@@ -117,8 +137,9 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
       if (!response.ok) {
         throw new Error("Failed to upload file");
       }
-      // const data: FileUploadResponse = await response.json();
+      const data: FileUploadResponse = await response.json();
       await refreshFolders();
+      return data;
     },
     [refreshFolders]
   );
@@ -315,6 +336,27 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedFolders([]);
   }, []);
 
+  const createFileFromLink = useCallback(
+    async (
+      url: string,
+      folderId: number | null
+    ): Promise<FileUploadResponse> => {
+      const response = await fetch("/api/user/file/create-from-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, folder_id: folderId }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to create file from link");
+      }
+      const data: FileUploadResponse = await response.json();
+      await refreshFolders();
+      return data;
+    },
+    [refreshFolders]
+  );
+
   const value = {
     folders,
     currentFolder,
@@ -344,6 +386,7 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     addSelectedFolder,
     removeSelectedFolder,
     clearSelectedItems,
+    createFileFromLink,
   };
 
   return (
