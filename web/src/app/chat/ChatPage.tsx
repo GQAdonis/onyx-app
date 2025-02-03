@@ -2980,7 +2980,13 @@ export function ChatPage({
       {/* Add the fixed toggle button */}
       <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
         <button
-          onClick={() => setForceUserFileSearch(!forceUserFileSearch)}
+          onClick={() => {
+            setPopup({
+              message: "This feature is not available yet.",
+              type: "error",
+            });
+            setForceUserFileSearch(!forceUserFileSearch);
+          }}
           className={`p-2 rounded-full ${
             forceUserFileSearch ? "bg-blue-500" : "bg-gray-300"
           } transition-colors duration-200`}

@@ -78,7 +78,6 @@ from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.server.query_and_chat.models import ChatMessageDetail
 from onyx.server.query_and_chat.models import CreateChatMessageRequest
 from onyx.server.utils import get_json_line
-from onyx.tools.built_in_tools import get_search_tool
 from onyx.tools.force import ForceUseTool
 from onyx.tools.models import ToolResponse
 from onyx.tools.tool import Tool
@@ -705,12 +704,6 @@ def stream_chat_message_objects(
         tools: list[Tool] = []
         for tool_list in tool_dict.values():
             tools.extend(tool_list)
-
-        if new_msg_req.force_user_file_search:
-            tools.append(get_search_tool(db_session))
-
-        print("TOOLS")
-        print(tools)
 
         # LLM prompt building, response capturing, etc.
         answer = Answer(
