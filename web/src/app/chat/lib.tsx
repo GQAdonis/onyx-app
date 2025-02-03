@@ -130,6 +130,7 @@ export async function* sendMessage({
   useExistingUserMessage,
   alternateAssistantId,
   signal,
+  forceUserFileSearch,
 }: {
   regenerate: boolean;
   message: string;
@@ -150,6 +151,7 @@ export async function* sendMessage({
   signal?: AbortSignal;
   userFileIds?: number[];
   userFolderIds?: number[];
+  forceUserFileSearch?: boolean;
 }): AsyncGenerator<PacketType, void, unknown> {
   const documentsAreSelected =
     selectedDocumentIds && selectedDocumentIds.length > 0;
@@ -160,6 +162,7 @@ export async function* sendMessage({
     message: message,
     prompt_id: promptId,
     search_doc_ids: documentsAreSelected ? selectedDocumentIds : null,
+    force_user_file_search: forceUserFileSearch,
     file_descriptors: fileDescriptors,
     user_file_ids: userFileIds,
     user_folder_ids: userFolderIds,

@@ -78,6 +78,7 @@ from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.server.query_and_chat.models import ChatMessageDetail
 from onyx.server.query_and_chat.models import CreateChatMessageRequest
 from onyx.server.utils import get_json_line
+from onyx.tools.built_in_tools import get_search_tool
 from onyx.tools.force import ForceUseTool
 from onyx.tools.models import ToolResponse
 from onyx.tools.tool import Tool
@@ -234,8 +235,11 @@ def _get_force_search_settings(
     search_tool_available = any(isinstance(tool, SearchTool) for tool in tools)
 
     if not internet_search_available and not search_tool_available:
-        # Does not matter much which tool is set here as force is false and neither tool is available
-        return ForceUseTool(force_use=False, tool_name=SearchTool._NAME)
+        if new_msg_req.force_user_file_search:
+            return ForceUseTool(force_use=True, tool_name=SearchTool._NAME)
+        else:
+            # Does not matter much which tool is set here as force is false and neither tool is available
+            return ForceUseTool(force_use=False, tool_name=SearchTool._NAME)
 
     tool_name = SearchTool._NAME if search_tool_available else InternetSearchTool._NAME
     # Currently, the internet search tool does not support query override
@@ -251,6 +255,7 @@ def _get_force_search_settings(
 
     should_force_search = any(
         [
+            new_msg_req.force_user_file_search,
             new_msg_req.retrieval_options
             and new_msg_req.retrieval_options.run_search
             == OptionalSearchSetting.ALWAYS,
@@ -309,6 +314,8 @@ def stream_chat_message_objects(
     # NOTE: is not stored in the database at all.
     single_message_history: str | None = None,
 ) -> ChatPacketStream:
+    print("STTTTREEEAMING")
+    print(new_msg_req.__dict__)
     """Streams in order:
     1. [conditional] Retrieved documents if a search needs to be run
     2. [conditional] LLM selected chunk indices if LLM chunk filtering is turned on
@@ -512,16 +519,20 @@ def stream_chat_message_objects(
         files = load_all_chat_files(
             history_msgs, new_msg_req.file_descriptors, db_session
         )
-        user_files = load_all_user_files(
-            new_msg_req.user_file_ids,
-            new_msg_req.user_folder_ids,
-            db_session,
-        )
         latest_query_files = [
             file
             for file in files
             if file.file_id in [f["id"] for f in new_msg_req.file_descriptors]
-        ] + user_files
+        ]
+
+        if not new_msg_req.force_user_file_search:
+            user_files = load_all_user_files(
+                new_msg_req.user_file_ids,
+                new_msg_req.user_folder_ids,
+                db_session,
+            )
+
+            latest_query_files += user_files
 
         if user_message:
             attach_files_to_chat_message(
@@ -665,6 +676,7 @@ def stream_chat_message_objects(
             user=user,
             llm=llm,
             fast_llm=fast_llm,
+            use_file_search=new_msg_req.force_user_file_search,
             search_tool_config=SearchToolConfig(
                 answer_style_config=answer_style_config,
                 document_pruning_config=document_pruning_config,
@@ -693,6 +705,12 @@ def stream_chat_message_objects(
         tools: list[Tool] = []
         for tool_list in tool_dict.values():
             tools.extend(tool_list)
+
+        if new_msg_req.force_user_file_search:
+            tools.append(get_search_tool(db_session))
+
+        print("TOOLS")
+        print(tools)
 
         # LLM prompt building, response capturing, etc.
         answer = Answer(

@@ -742,6 +742,8 @@ class VespaIndex(DocumentIndex):
             "ranking.profile": f"hybrid_search{len(query_embedding)}",
             "timeout": VESPA_TIMEOUT,
         }
+        print("QUERYING VESPA")
+        print(params)
 
         return query_vespa(params)
 

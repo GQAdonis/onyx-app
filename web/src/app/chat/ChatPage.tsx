@@ -118,6 +118,7 @@ import {
   useDocumentsContext,
   FileResponse,
   FolderResponse,
+  FileUploadResponse,
 } from "./my-documents/DocumentsContext";
 import { SourceMetadata } from "@/lib/search/interfaces";
 import { ValidSources } from "@/lib/types";
@@ -160,6 +161,8 @@ export function ChatPage({
     removeSelectedFolder,
     clearSelectedItems,
     folders: userFolders,
+    setSelectedFiles,
+    uploadFile,
   } = useDocumentsContext();
 
   const defaultAssistantIdRaw = searchParams.get(SEARCH_PARAM_NAMES.PERSONA_ID);
@@ -1299,7 +1302,9 @@ export function ChatPage({
           filterManager.selectedSources,
           filterManager.selectedDocumentSets,
           filterManager.timeRange,
-          filterManager.selectedTags
+          filterManager.selectedTags,
+          selectedFiles.map((file) => file.id),
+          selectedFolders.map((folder) => folder.id)
         ),
         selectedDocumentIds: selectedDocuments
           .filter(
@@ -1327,6 +1332,7 @@ export function ChatPage({
         systemPromptOverride:
           searchParams.get(SEARCH_PARAM_NAMES.SYSTEM_PROMPT) || undefined,
         useExistingUserMessage: isSeededChat,
+        forceUserFileSearch: forceUserFileSearch,
       });
 
       const delay = (ms: number) => {
@@ -1682,17 +1688,61 @@ export function ChatPage({
     };
     updateChatState("uploading", currentSessionId());
 
-    await uploadFilesForChat(acceptedFiles).then(([files, error]) => {
-      if (error) {
-        setCurrentMessageFiles((prev) => removeTempFiles(prev));
-        setPopup({
-          type: "error",
-          message: error,
-        });
-      } else {
-        setCurrentMessageFiles((prev) => [...removeTempFiles(prev), ...files]);
+    // const files = await uploadFilesForChat(acceptedFiles).then(
+    //   ([files, error]) => {
+    //     if (error) {
+    //       setCurrentMessageFiles((prev) => removeTempFiles(prev));
+    //       setPopup({
+    //         type: "error",
+    //         message: error,
+    //       });
+    //     } else {
+    //       setCurrentMessageFiles((prev) => [
+    //         ...removeTempFiles(prev),
+    //         ...files,
+    //       ]);
+    //     }
+    //     return files;
+    //   }
+    // );
+
+    for (let i = 0; i < acceptedFiles.length; i++) {
+      const file = acceptedFiles[i];
+      const formData = new FormData();
+      formData.append("files", file);
+      const response: FileUploadResponse = await uploadFile(formData, null);
+
+      if (response.file_paths && response.file_paths.length > 0) {
+        const uploadedFile: FileResponse = {
+          id: Date.now(),
+          name: file.name,
+          document_id: response.file_paths[0],
+          folder_id: null,
+          size: file.size,
+          type: file.type,
+          lastModified: new Date().toISOString(),
+          token_count: 0,
+        };
+        addSelectedFile(uploadedFile);
       }
-    });
+    }
+
+    // const fileToAdd: FileResponse[] = files.map((file: FileDescriptor) => {
+    //   return {
+    //     document_id: file.id,
+    //     type: file.type.startsWith("image/")
+    //       ? ChatFileType.IMAGE
+    //       : ChatFileType.DOCUMENT,
+    //     name: file.name || "Name not available",
+    //     size: 10,
+    //     folder_id: -1,
+    //     id: 10,
+    //   };
+    // });
+    // setSelectedFiles((prevFiles: FileResponse[]) => [
+    //   ...prevFiles,
+    //   ...fileToAdd,
+    // ]);
     updateChatState("input", currentSessionId());
   };
 
@@ -2056,6 +2106,8 @@ export function ChatPage({
     // addSelectedFile(uploadedFile);
   };
 
+  const [forceUserFileSearch, setForceUserFileSearch] = useState(true);
+
   return (
     <>
       <HealthCheckBanner />
@@ -2141,7 +2193,7 @@ export function ChatPage({
           selectedFolders={selectedFolders}
           addSelectedFile={addSelectedFile}
           addSelectedFolder={addSelectedFolder}
-          removeSelectedFolder={removeSelectedFolder}
+          removeSelectedFile={removeSelectedFolder}
         />
       )}
 
@@ -2923,6 +2975,18 @@ export function ChatPage({
           <FixedLogo backgroundToggled={toggledSidebar || showHistorySidebar} />
         </div>
         {/* Right Sidebar - DocumentSidebar */}
+      </div>
+
+      {/* Add the fixed toggle button */}
+      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
+        <button
+          onClick={() => setForceUserFileSearch(!forceUserFileSearch)}
+          className={`p-2 rounded-full ${
+            forceUserFileSearch ? "bg-blue-500" : "bg-gray-300"
+          } transition-colors duration-200`}
+        >
+          {forceUserFileSearch ? "On" : "Off"}
+        </button>
       </div>
     </>
   );

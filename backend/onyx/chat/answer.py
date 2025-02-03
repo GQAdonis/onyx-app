@@ -82,6 +82,8 @@ class Answer:
         self.file_id_to_file = {file.file_id: file for file in (files or [])}
 
         self.tools = tools or []
+        print("TOOLS inside!")
+        print(self.tools)
         self.force_use_tool = force_use_tool
 
         self.message_history = message_history or []
@@ -118,10 +120,18 @@ class Answer:
     def _get_tools_list(self) -> list[Tool]:
         if not self.force_use_tool.force_use:
             return self.tools
-
+        print("Available tools:", [t.name for t in self.tools])
+        print("Searching for tool:", self.force_use_tool.tool_name)
         tool = next(
             (t for t in self.tools if t.name == self.force_use_tool.tool_name), None
         )
+        print("Found tool:", tool)
+        if tool is None:
+            print(
+                "ERROR: Tool not found. Available tools:", [t.name for t in self.tools]
+            )
+            print("Searched for tool name:", self.force_use_tool.tool_name)
+            raise RuntimeError(f"Tool '{self.force_use_tool.tool_name}' not found")
         if tool is None:
             raise RuntimeError(f"Tool '{self.force_use_tool.tool_name}' not found")
 

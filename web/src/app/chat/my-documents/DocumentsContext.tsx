@@ -6,6 +6,8 @@ import React, {
   useCallback,
   ReactNode,
   useEffect,
+  Dispatch,
+  SetStateAction,
 } from "react";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 
@@ -23,10 +25,10 @@ export type FileResponse = {
   name: string;
   document_id: string;
   folder_id: number | null;
-  size: number;
-  type: string;
-  lastModified: string;
-  token_count: number;
+  size?: number;
+  type?: string;
+  lastModified?: string;
+  token_count?: number;
   assistant_ids?: number[];
   indexed?: boolean;
 };
@@ -83,8 +85,8 @@ interface DocumentsContextType {
     url: string,
     folderId: number | null
   ) => Promise<FileUploadResponse>;
-  setSelectedFiles: (files: FileResponse[]) => void;
-  setSelectedFolders: (folders: FolderResponse[]) => void;
+  setSelectedFiles: Dispatch<SetStateAction<FileResponse[]>>;
+  setSelectedFolders: Dispatch<SetStateAction<FolderResponse[]>>;
 }
 
 const DocumentsContext = createContext<DocumentsContextType | undefined>(

@@ -384,41 +384,36 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     return items;
   }, [folders, selectedFileIds, selectedFolderIds]);
 
+  const addUploadedFileToContext = async (files: FileList) => {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append("files", file);
+      const response: FileUploadResponse = await uploadFile(formData, null);
+
+      if (response.file_paths && response.file_paths.length > 0) {
+        const uploadedFile: FileResponse = {
+          id: Date.now(),
+          name: file.name,
+          document_id: response.file_paths[0],
+          folder_id: null,
+          size: file.size,
+          type: file.type,
+          lastModified: new Date().toISOString(),
+          token_count: 0,
+        };
+        addSelectedFile(uploadedFile);
+      }
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log("File upload started");
     const files = e.target.files;
     if (files) {
       setIsUploadingFile(true);
       try {
-        console.log("Uploading files:", files);
-        for (let i = 0; i < files.length; i++) {
-          console.log("Uploading file:", files[i]);
-          const file = files[i];
-          const formData = new FormData();
-          formData.append("files", file);
-          const response: FileUploadResponse = await uploadFile(formData, null);
-
-          if (response.file_paths && response.file_paths.length > 0) {
-            console.log("Uploaded file:", response.file_paths[0]);
-
-            const uploadedFile: FileResponse = {
-              id: Date.now(),
-              name: file.name,
-              document_id: response.file_paths[0],
-              folder_id: null,
-              size: file.size,
-              type: file.type,
-              lastModified: new Date().toISOString(),
-              token_count: 0,
-            };
-            console.log("ADDING A FILE");
-            console.log("Uploaded file:", uploadedFile);
-            addSelectedFile(uploadedFile);
-          } else {
-            console.log("Response:", response);
-            console.log("No file paths returned");
-          }
-        }
+        await addUploadedFileToContext(files);
         await refreshFolders();
       } catch (error) {
         console.error("Error uploading file:", error);
