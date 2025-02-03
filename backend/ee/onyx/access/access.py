@@ -28,8 +28,6 @@ def _get_access_for_document(
         return DocumentAccess.build(
             user_emails=[],
             user_groups=[],
-            user_files=[],
-            user_folders=[],
             external_user_emails=[],
             external_user_group_ids=[],
             is_public=False,
@@ -101,8 +99,6 @@ def _get_access_for_documents(
             is_public=is_public_anywhere,
             external_user_emails=ext_u_emails,
             external_user_group_ids=ext_u_groups,
-            user_files=non_ee_access.user_files,
-            user_folders=non_ee_access.user_folders,
         )
     return access_map
 

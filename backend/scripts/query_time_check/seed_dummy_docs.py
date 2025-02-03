@@ -10,7 +10,6 @@ Then run test_query_times.py to test query times.
 """
 import random
 from datetime import datetime
-from typing import cast
 
 from onyx.access.models import DocumentAccess
 from onyx.configs.constants import DocumentSource
@@ -92,8 +91,6 @@ def generate_dummy_chunk(
         access=DocumentAccess(
             user_emails=user_emails,
             user_groups=user_groups,
-            user_files=cast(set[int], []),
-            user_folders=cast(set[int], []),
             external_user_emails=external_user_emails,
             external_user_group_ids=external_user_group_ids,
             is_public=random.choice([True, False]),
