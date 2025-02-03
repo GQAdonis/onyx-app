@@ -74,7 +74,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
                 document_id: file.document_id,
               })
             }
-            isIndexed={file.indexed}
+            isIndexed={file.indexed || false}
           />
         ))}
         {isLoading && <SkeletonFileListItem view={view} />}

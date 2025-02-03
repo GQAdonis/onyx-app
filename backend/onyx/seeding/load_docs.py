@@ -86,6 +86,8 @@ def _create_indexable_chunks(
             tenant_id=tenant_id,
             access=default_public_access,
             document_sets=set(),
+            user_files=[],
+            user_folders=[],
             boost=DEFAULT_BOOST,
             large_chunk_id=None,
         )

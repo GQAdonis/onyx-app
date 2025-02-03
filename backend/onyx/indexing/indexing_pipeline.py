@@ -402,6 +402,13 @@ def index_doc_batch(
             )
         }
 
+        # doc_id_to_user_files = {
+        #     document_id: user_file
+        #     for document_id, user_file in fetch_user_files_for_documents(
+        #         document_ids=updatable_ids, db_session=db_session
+        #     )
+        # }
+
         doc_id_to_previous_chunk_cnt: dict[str, int | None] = {
             document_id: chunk_count
             for document_id, chunk_count in fetch_chunk_counts_for_documents(
