@@ -4,6 +4,7 @@ from fastapi import UploadFile
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+from onyx.connectors.file.connector import _read_files_and_metadata
 from onyx.db.models import Persona
 from onyx.db.models import Persona__UserFile
 from onyx.db.models import User
@@ -21,9 +22,15 @@ def create_user_files(
     user: User,
     db_session: Session,
 ) -> list[UserFile]:
+    print("user file endpoint")
     upload_response = upload_files(files, db_session)
     user_files = []
-    content, _ = read_text_file(upload_response.file_paths[0])
+
+    context_files = _read_files_and_metadata(
+        file_name=str(upload_response.file_paths[0]), db_session=db_session
+    )
+
+    content, _ = read_text_file(next(context_files)[1])
     llm, _ = get_default_llms()
 
     llm_tokenizer = get_tokenizer(

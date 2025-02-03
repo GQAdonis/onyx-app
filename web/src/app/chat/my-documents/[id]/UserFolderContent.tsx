@@ -111,7 +111,8 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
 
   const [linkUrl, setLinkUrl] = useState("");
   const [isCreatingFileFromLink, setIsCreatingFileFromLink] = useState(false);
-
+  const [creatingFileFromLinkToggled, setCreatingFileFromLinkToggled] =
+    useState(false);
   const refreshFolderDetails = useCallback(async () => {
     try {
       const details = await getFolderDetails(folderId);
@@ -350,6 +351,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
                   </>
                 )}
               </div>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -393,29 +395,53 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
           </div>
 
           <div className="p-4 border-b border-[#d9d9d0]">
-            <div className="flex items-center mb-2">
-              <Link className="w-5 h-4 mr-3 text-[#13343a]" />
-              <span className="text-[#13343a] text-sm font-medium leading-tight">
-                Create File from Link
-              </span>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="Enter URL"
-                className="flex-grow mr-2 px-2 py-1 border border-gray-300 rounded"
-              />
+            <button
+              className="flex items-center justify-between  w-full cursor-pointer"
+              onClick={() =>
+                setCreatingFileFromLinkToggled(!creatingFileFromLinkToggled)
+              }
+            >
+              <div className="flex items-center">
+                <Link className="w-5 h-4 mr-3 text-[#13343a]" />
+                <span className="text-[#13343a] text-sm font-medium leading-tight">
+                  Add a website
+                </span>
+              </div>
               <Button
-                variant="default"
+                variant="ghost"
                 size="sm"
-                onClick={handleCreateFileFromLink}
-                disabled={isCreatingFileFromLink || !linkUrl}
+                className="w-6 h-6 p-0 rounded-full"
               >
-                {isCreatingFileFromLink ? "Creating..." : "Create"}
+                {creatingFileFromLinkToggled ? (
+                  <ChevronDown className="w-[15px] h-3 text-[#13343a]" />
+                ) : (
+                  <ChevronRight className="w-[15px] h-3 text-[#13343a]" />
+                )}
               </Button>
-            </div>
+            </button>
+
+            {creatingFileFromLinkToggled ? (
+              <div className="flex mt-4 items-center">
+                <input
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="Enter URL"
+                  className="flex-grow !text-sm mr-2 px-2 py-1 border border-gray-300 rounded"
+                />
+                <Button
+                  variant="default"
+                  className="!text-sm"
+                  size="xs"
+                  onClick={handleCreateFileFromLink}
+                  disabled={isCreatingFileFromLink || !linkUrl}
+                >
+                  {isCreatingFileFromLink ? "Creating..." : "Create"}
+                </Button>
+              </div>
+            ) : (
+              <> </>
+            )}
           </div>
 
           <div className="p-4">

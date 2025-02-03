@@ -156,7 +156,6 @@ export function ChatPage({
     selectedFiles,
     selectedFolders,
     addSelectedFile,
-    removeSelectedFile,
     addSelectedFolder,
     removeSelectedFolder,
     clearSelectedItems,
@@ -2128,6 +2127,7 @@ export function ChatPage({
           }}
         />
       )}
+
       {toggleDocSelection && (
         <FilePickerModal
           buttonContent="Set as Context"
@@ -2140,7 +2140,6 @@ export function ChatPage({
           selectedFiles={selectedFiles}
           selectedFolders={selectedFolders}
           addSelectedFile={addSelectedFile}
-          removeSelectedFile={removeSelectedFile}
           addSelectedFolder={addSelectedFolder}
           removeSelectedFolder={removeSelectedFolder}
         />

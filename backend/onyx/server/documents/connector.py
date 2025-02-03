@@ -933,14 +933,35 @@ def connector_run_once(
     connector_id = run_info.connector_id
     specified_credential_ids = run_info.credential_ids
 
-    if not specified_credential_ids:
+    try:
+        possible_credential_ids = get_connector_credential_ids(
+            run_info.connector_id, db_session
+        )
+    except ValueError:
         raise HTTPException(
-            status_code=400, detail="No credentials specified for indexing"
+            status_code=404,
+            detail=f"Connector by id {connector_id} does not exist.",
         )
 
+    if not specified_credential_ids:
+        credential_ids = possible_credential_ids
+    else:
+        if set(specified_credential_ids).issubset(set(possible_credential_ids)):
+            credential_ids = specified_credential_ids
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Not all specified credentials are associated with connector",
+            )
+
+    if not credential_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Connector has no valid credentials, cannot create index attempts.",
+        )
     try:
         num_triggers = trigger_indexing_for_cc_pair(
-            specified_credential_ids,
+            credential_ids,
             connector_id,
             run_info.from_beginning,
             tenant_id,

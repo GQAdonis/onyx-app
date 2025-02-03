@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
+import { FiDownload, FiEdit, FiSearch, FiTrash } from "react-icons/fi";
 interface FileListItemProps {
   file: FileResponse;
   isSelected?: boolean;
@@ -78,7 +79,7 @@ export const FileListItem: React.FC<FileListItemProps> = ({
               <TooltipTrigger asChild>
                 <div
                   className={`h-2 w-2 rounded-full ${
-                    isIndexed ? "bg-transparent" : "bg-red-600"
+                    isIndexed ? "bg-transparent" : "bg-red-600 animate-pulse"
                   }`}
                 />
               </TooltipTrigger>
@@ -102,34 +103,28 @@ export const FileListItem: React.FC<FileListItemProps> = ({
             <MoreVertical className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56">
-          <div className="space-y-2">
+        <PopoverContent className="!p-0 w-40">
+          <div className=" space-y-0">
             <Button
-              variant="ghost"
-              className="w-full justify-start"
+              variant="menu"
               onClick={() => onSummarize(file.document_id)}
             >
+              <FiSearch className="h-4 w-4" />
               Summarize
             </Button>
             <Button
-              variant="ghost"
-              className="w-full justify-start"
+              variant="menu"
               onClick={() => onRename(file.id, file.name, false)}
             >
+              <FiEdit className="h-4 w-4" />
               Rename
             </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => onDelete(file.id, false)}
-            >
+            <Button variant="menu" onClick={() => onDelete(file.id, false)}>
+              <FiTrash className="h-4 w-4" />
               Delete
             </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => onDownload(file.document_id)}
-            >
+            <Button variant="menu" onClick={() => onDownload(file.document_id)}>
+              <FiDownload className="h-4 w-4" />
               Download
             </Button>
           </div>

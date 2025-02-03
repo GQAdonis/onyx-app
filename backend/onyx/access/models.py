@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from onyx.access.utils import prefix_external_group
 from onyx.access.utils import prefix_user_email
+from onyx.access.utils import prefix_user_file
+from onyx.access.utils import prefix_user_folder
 from onyx.access.utils import prefix_user_group
 from onyx.configs.constants import PUBLIC_DOC_PAT
 
@@ -62,6 +64,10 @@ class DocumentAccess(ExternalAccess):
     user_emails: set[str | None]
     # Names of user groups associated with this document
     user_groups: set[str]
+    # The files that the user has access to
+    user_files: set[int]
+    # The folders that the user has access to
+    user_folders: set[int]
 
     def to_acl(self) -> set[str]:
         return set(
@@ -81,6 +87,8 @@ class DocumentAccess(ExternalAccess):
                 prefix_external_group(group_name)
                 for group_name in self.external_user_group_ids
             ]
+            + [prefix_user_file(file_id) for file_id in self.user_files]
+            + [prefix_user_folder(folder_id) for folder_id in self.user_folders]
             + ([PUBLIC_DOC_PAT] if self.is_public else [])
         )
 
@@ -89,6 +97,8 @@ class DocumentAccess(ExternalAccess):
         cls,
         user_emails: list[str | None],
         user_groups: list[str],
+        user_files: list[int],
+        user_folders: list[int],
         external_user_emails: list[str],
         external_user_group_ids: list[str],
         is_public: bool,
@@ -108,6 +118,8 @@ class DocumentAccess(ExternalAccess):
                 if user_email
             },
             user_groups=set(user_groups),
+            user_files=set(user_files),
+            user_folders=set(user_folders),
             is_public=is_public,
         )
 
@@ -117,5 +129,7 @@ default_public_access = DocumentAccess(
     external_user_group_ids=set(),
     user_emails=set(),
     user_groups=set(),
+    user_files=set(),
+    user_folders=set(),
     is_public=True,
 )

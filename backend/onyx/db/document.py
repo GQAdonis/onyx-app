@@ -8,6 +8,7 @@ from datetime import timezone
 
 from sqlalchemy import and_
 from sqlalchemy import delete
+from sqlalchemy import distinct
 from sqlalchemy import exists
 from sqlalchemy import func
 from sqlalchemy import or_
@@ -33,6 +34,8 @@ from onyx.db.models import Credential
 from onyx.db.models import Document as DbDocument
 from onyx.db.models import DocumentByConnectorCredentialPair
 from onyx.db.models import User
+from onyx.db.models import UserFile
+from onyx.db.models import UserFolder
 from onyx.db.tag import delete_document_tags_for_documents__no_commit
 from onyx.db.utils import model_to_dict
 from onyx.document_index.interfaces import DocumentMetadata
@@ -248,7 +251,7 @@ def get_document_counts_for_cc_pairs(
 def get_access_info_for_document(
     db_session: Session,
     document_id: str,
-) -> tuple[str, list[str | None], bool] | None:
+) -> tuple[str, list[str | None], bool, list[int], list[int]] | None:
     """Gets access info for a single document by calling the get_access_info_for_documents function
     and passing a list with a single document ID.
     Args:
@@ -268,7 +271,7 @@ def get_access_info_for_document(
 def get_access_info_for_documents(
     db_session: Session,
     document_ids: list[str],
-) -> Sequence[tuple[str, list[str | None], bool]]:
+) -> Sequence[tuple[str, list[str | None], bool, list[int], list[int]]]:
     """Gets back all relevant access info for the given documents. This includes
     the user_ids for cc pairs that the document is associated with + whether any
     of the associated cc pairs are intending to make the document globally public.
@@ -279,16 +282,23 @@ def get_access_info_for_documents(
     - bool for whether the document is public (the document later can also be marked public by
       automatic permission sync step)
     """
-    stmt = select(
-        DocumentByConnectorCredentialPair.id,
-        func.array_agg(func.coalesce(User.email, null())).label("user_emails"),
-        func.bool_or(ConnectorCredentialPair.access_type == AccessType.PUBLIC).label(
-            "public_doc"
-        ),
-    ).where(DocumentByConnectorCredentialPair.id.in_(document_ids))
 
     stmt = (
-        stmt.join(
+        select(
+            DocumentByConnectorCredentialPair.id,
+            # Keep the user emails aggregation the same.
+            func.array_agg(func.coalesce(User.email, null())).label("user_emails"),
+            # Keep the "public" check the same.
+            func.bool_or(
+                ConnectorCredentialPair.access_type == AccessType.PUBLIC
+            ).label("public_doc"),
+            # NEW: We also aggregate user_file IDs (might be None if no user_file).
+            func.array_agg(distinct(UserFile.id)).label("user_file_ids"),
+            # NEW: We also aggregate user_folder IDs (might be None if no folder).
+            func.array_agg(distinct(UserFolder.id)).label("user_folder_ids"),
+        )
+        .select_from(DocumentByConnectorCredentialPair)
+        .join(
             Credential,
             DocumentByConnectorCredentialPair.credential_id == Credential.id,
         )
@@ -301,6 +311,7 @@ def get_access_info_for_documents(
                 == ConnectorCredentialPair.credential_id,
             ),
         )
+        # Outer-join to User so that if no user is attached, we can still get results:
         .outerjoin(
             User,
             and_(
@@ -308,11 +319,50 @@ def get_access_info_for_documents(
                 ConnectorCredentialPair.access_type != AccessType.SYNC,
             ),
         )
-        # don't include CC pairs that are being deleted
-        # NOTE: CC pairs can never go from DELETING to any other state -> it's safe to ignore them
+        # NEW: Outer-join to UserFile so we can get that CC pair’s user_file (if any):
+        .outerjoin(
+            UserFile,
+            UserFile.cc_pair_id == ConnectorCredentialPair.id,
+        )
+        # NEW: Outer-join to UserFolder through UserFile.folder_id:
+        .outerjoin(
+            UserFolder,
+            UserFolder.id == UserFile.folder_id,
+        )
+        # Exclude cc_pairs that are being deleted:
         .where(ConnectorCredentialPair.status != ConnectorCredentialPairStatus.DELETING)
+        .where(DocumentByConnectorCredentialPair.id.in_(document_ids))
         .group_by(DocumentByConnectorCredentialPair.id)
     )
+
+    return db_session.execute(stmt).all()
+
+    # stmt = (
+    #     stmt.join(
+    #         Credential,
+    #         DocumentByConnectorCredentialPair.credential_id == Credential.id,
+    #     )
+    #     .join(
+    #         ConnectorCredentialPair,
+    #         and_(
+    #             DocumentByConnectorCredentialPair.connector_id
+    #             == ConnectorCredentialPair.connector_id,
+    #             DocumentByConnectorCredentialPair.credential_id
+    #             == ConnectorCredentialPair.credential_id,
+    #         ),
+    #     )
+    #     .outerjoin(
+    #         User,
+    #         and_(
+    #             Credential.user_id == User.id,
+    #             ConnectorCredentialPair.access_type != AccessType.SYNC,
+    #         ),
+    #     )
+    #     # don't include CC pairs that are being deleted
+    #     # NOTE: CC pairs can never go from DELETING to any other state -> it's safe to ignore them
+    #     .where(ConnectorCredentialPair.status != ConnectorCredentialPairStatus.DELETING)
+    #     .group_by(DocumentByConnectorCredentialPair.id)
+    # )
     return db_session.execute(stmt).all()  # type: ignore
 
 

@@ -57,12 +57,8 @@ class UserFolderSnapshot(BaseModel):
             created_at=model.created_at,
             user_id=model.user_id,
             assistant_ids=[assistant.id for assistant in model.assistants],
-            token_count=sum(file.token_count for file in model.files),
+            token_count=sum(file.token_count or 0 for file in model.files) or None,
         )
-
-
-class FolderDetailResponse(UserFolderSnapshot):
-    files: List[UserFileSnapshot]
 
 
 class MessageResponse(BaseModel):

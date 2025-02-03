@@ -34,7 +34,6 @@ from onyx.file_processing.html_utils import web_html_cleanup
 from onyx.server.documents.models import ConnectorBase
 from onyx.server.documents.models import CredentialBase
 from onyx.server.documents.models import FileUploadResponse
-from onyx.server.user_documents.models import FolderDetailResponse
 from onyx.server.user_documents.models import MessageResponse
 from onyx.server.user_documents.models import UserFileSnapshot
 from onyx.server.user_documents.models import UserFolderSnapshot
@@ -52,7 +51,7 @@ def create_folder(
     request: FolderCreationRequest,
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FolderDetailResponse:
+) -> UserFolderSnapshot:
     try:
         new_folder = UserFolder(
             user_id=user.id if user else None,
@@ -61,7 +60,7 @@ def create_folder(
         )
         db_session.add(new_folder)
         db_session.commit()
-        return FolderDetailResponse.from_model(new_folder)
+        return UserFolderSnapshot.from_model(new_folder)
     except sqlalchemy.exc.DataError as e:
         if "StringDataRightTruncation" in str(e):
             raise HTTPException(
@@ -77,7 +76,7 @@ def create_folder(
 def get_folders(
     user: User = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> List[UserFolderSnapshot]:
+) -> list[UserFolderSnapshot]:
     user_id = user.id if user else None
     folders = db_session.query(UserFolder).filter(UserFolder.user_id == user_id).all()
     return [UserFolderSnapshot.from_model(folder) for folder in folders]
@@ -88,7 +87,7 @@ def get_folder(
     folder_id: int,
     user: User | None = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FolderDetailResponse:
+) -> UserFolderSnapshot:
     user_id = user.id if user else None
     folder = (
         db_session.query(UserFolder)
@@ -98,7 +97,7 @@ def get_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    return FolderDetailResponse.from_model(folder)
+    return UserFolderSnapshot.from_model(folder)
 
 
 @router.post("/user/file/upload")
@@ -168,7 +167,7 @@ def update_folder(
     name: str,
     user: User | None = Depends(current_user),
     db_session: Session = Depends(get_session),
-) -> FolderDetailResponse:
+) -> UserFolderSnapshot:
     user_id = user.id if user else None
     folder = (
         db_session.query(UserFolder)
@@ -181,7 +180,7 @@ def update_folder(
 
     db_session.commit()
 
-    return FolderDetailResponse.from_model(folder)
+    return UserFolderSnapshot.from_model(folder)
 
 
 @router.delete("/user/folder/{folder_id}")

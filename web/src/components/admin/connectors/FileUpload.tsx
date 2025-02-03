@@ -28,6 +28,7 @@ export const FileUpload: FC<FileUploadProps> = ({
       <Dropzone
         onDrop={(acceptedFiles) => {
           const filesToSet = multiple ? acceptedFiles : [acceptedFiles[0]];
+          console.log("Setting selected files");
           setSelectedFiles(filesToSet);
           setDragActive(false);
           if (name) {

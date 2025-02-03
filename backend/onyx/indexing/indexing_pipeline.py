@@ -354,6 +354,8 @@ def index_doc_batch(
         user_groups=[],
         external_user_emails=[],
         external_user_group_ids=[],
+        user_files=[],
+        user_folders=[],
         is_public=False,
     )
 

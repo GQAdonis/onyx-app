@@ -1,7 +1,12 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { X, Folder, File } from "lucide-react";
-import { FolderResponse, FileResponse } from "../DocumentsContext";
+import {
+  FolderResponse,
+  FileResponse,
+  useDocumentsContext,
+} from "../DocumentsContext";
+import { useDocumentSelection } from "../../useDocumentSelection";
 
 interface SelectedItemsListProps {
   folders: FolderResponse[];
@@ -16,12 +21,18 @@ export const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
   onRemoveFile,
   onRemoveFolder,
 }) => {
+  // const {
+  // selectedFiles,
+  //   selectedFolders,
+  //   setSelectedFiles,
+  //   setSelectedFolders,
+  // } = useDocumentsContext();
   return (
     <div className="h-full w-full flex flex-col">
-      <h3 className="font-semibold mb-2">Selected Items</h3>
-      <div className="w-full overflow-y-auto border-t border-t-text-subtle flex-grow">
+      <h3 className="font-semibold fixed mb-2">Selected Items</h3>
+      <div className="w-full overflow-y-auto mt-8 border-t border-t-text-subtle flex-grow">
         <div className="space-y-2 pt-2">
-          {folders.map((folder) => (
+          {folders?.map((folder: FolderResponse) => (
             <div
               key={folder.id}
               className="flex items-center justify-between bg-blue-50 p-2 rounded-md border border-blue-200"
@@ -40,7 +51,7 @@ export const SelectedItemsList: React.FC<SelectedItemsListProps> = ({
               </Button>
             </div>
           ))}
-          {files.map((file) => (
+          {files?.map((file: FileResponse) => (
             <div
               key={file.id}
               className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200"

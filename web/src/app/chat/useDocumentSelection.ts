@@ -32,10 +32,12 @@ export function useDocumentSelection(): [
     []
   );
   const removeSelectedFile = (file: FileResponse) => {
+    console.log("Removing file:", file);
     setSelectedFiles(selectedFiles.filter((f) => f.id !== file.id));
   };
 
   const addSelectedFile = (file: FileResponse) => {
+    console.log("Adding file:", file);
     setSelectedFiles([...selectedFiles, file]);
   };
   const [totalTokens, setTotalTokens] = useState(0);

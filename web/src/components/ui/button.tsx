@@ -9,6 +9,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        menu: "w-full justify-start text-neutral-500 !gap-x-2 !py-0 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-50",
+
         success:
           "bg-green-100 text-green-600 hover:bg-green-500/90 dark:bg-blue-500 dark:text-neutral-50 dark:hover:bg-green-900/90",
         "success-reverse":
@@ -58,6 +60,7 @@ const buttonVariants = cva(
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
+        xs: "h-7 rounded-md px-2",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
       },

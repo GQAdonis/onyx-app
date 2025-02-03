@@ -28,7 +28,7 @@ export type FileResponse = {
   lastModified: string;
   token_count: number;
   assistant_ids?: number[];
-  indexed: boolean;
+  indexed?: boolean;
 };
 
 export interface FileUploadResponse {
@@ -83,6 +83,8 @@ interface DocumentsContextType {
     url: string,
     folderId: number | null
   ) => Promise<FileUploadResponse>;
+  setSelectedFiles: (files: FileResponse[]) => void;
+  setSelectedFolders: (folders: FolderResponse[]) => void;
 }
 
 const DocumentsContext = createContext<DocumentsContextType | undefined>(
@@ -110,6 +112,10 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     fetchFolders();
   }, []);
 
+  useEffect(() => {
+    console.log("selectedFiles", selectedFiles);
+  }, [selectedFiles]);
+
   const refreshFolders = useCallback(async () => {
     const response = await fetch("/api/user/folder");
     if (!response.ok) {
@@ -125,6 +131,7 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
       formData: FormData,
       folderId: number | null
     ): Promise<FileUploadResponse> => {
+      console.log("In THE CLLABCK");
       if (folderId) {
         formData.append("folder_id", folderId.toString());
       }
@@ -309,10 +316,14 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
   );
 
   const addSelectedFile = useCallback((file: FileResponse) => {
+    console.log("ADDING A FILE");
+    const newList = [...selectedFiles, file];
+    console.log("new list", newList);
     setSelectedFiles((prev) => [...prev, file]);
   }, []);
 
   const removeSelectedFile = useCallback((file: FileResponse) => {
+    console.log("REMOVING A FILE");
     setSelectedFiles((prev) => prev.filter((f) => f.id !== file.id));
   }, []);
 
@@ -330,6 +341,7 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const clearSelectedItems = useCallback(() => {
+    console.log("CLEARING SELECTED ITEMS");
     setSelectedFiles([]);
     setSelectedFolders([]);
   }, []);
@@ -385,6 +397,8 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
     removeSelectedFolder,
     clearSelectedItems,
     createFileFromLink,
+    setSelectedFiles,
+    setSelectedFolders,
   };
 
   return (

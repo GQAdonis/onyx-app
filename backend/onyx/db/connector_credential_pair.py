@@ -109,8 +109,8 @@ def get_connector_credential_pairs_for_user(
     if ids:
         stmt = stmt.where(ConnectorCredentialPair.id.in_(ids))
 
-    if not include_user_files:
-        stmt = stmt.where(ConnectorCredentialPair.is_user_file is False)
+    # if not include_user_files:
+    #     stmt = stmt.where(ConnectorCredentialPair.is_user_file ==  False)
 
     return list(db_session.scalars(stmt).all())
 
@@ -123,8 +123,8 @@ def get_connector_credential_pairs(
     if ids:
         stmt = stmt.where(ConnectorCredentialPair.id.in_(ids))
 
-    if not include_user_files:
-        stmt = stmt.where(ConnectorCredentialPair.is_user_file is False)
+    # if not include_user_files:
+    #     stmt = stmt.where(ConnectorCredentialPair.is_user_file is False)
 
     return list(db_session.scalars(stmt).all())
 

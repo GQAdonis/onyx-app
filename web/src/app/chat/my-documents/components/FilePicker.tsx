@@ -194,7 +194,6 @@ export interface FilePickerModalProps {
   addSelectedFile: (file: FileResponse) => void;
   removeSelectedFile: (file: FileResponse) => void;
   addSelectedFolder: (folder: FolderResponse) => void;
-  removeSelectedFolder: (folder: FolderResponse) => void;
 }
 
 export const FilePickerModal: React.FC<FilePickerModalProps> = ({
@@ -206,15 +205,14 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
   selectedFiles,
   selectedFolders,
   addSelectedFile,
-  removeSelectedFile,
   addSelectedFolder,
-  removeSelectedFolder,
 }) => {
   const {
     folders,
     refreshFolders,
     uploadFile,
     currentFolder,
+
     setCurrentFolder,
     renameItem,
     deleteItem,
@@ -222,7 +220,10 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     summarizeDocument,
     addToCollection,
     downloadItem,
+    removeSelectedFile,
     createFileFromLink,
+    setSelectedFiles,
+    setSelectedFolders,
   } = useDocumentsContext();
 
   const router = useRouter();
@@ -306,6 +307,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
       }
       return newSet;
     });
+    removeSelectedFile(file);
 
     // Check if the file's folder should be unselected
     if (file.folder_id) {
@@ -357,6 +359,12 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
       folders: [],
       files: [],
     };
+    selectedFiles.forEach((file) => {
+      if (!folders.some((f) => f.id === file.folder_id)) {
+        items.files.push(file);
+      }
+    });
+
     folders.forEach((folder) => {
       if (selectedFolderIds.has(folder.id)) {
         items.folders.push(folder);
@@ -380,25 +388,33 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     if (files) {
       setIsUploadingFile(true);
       try {
+        console.log("Uploading files:", files);
         for (let i = 0; i < files.length; i++) {
+          console.log("Uploading file:", files[i]);
           const file = files[i];
           const formData = new FormData();
           formData.append("files", file);
-          formData.append("folder_id", (currentFolder || 0).toString());
           const response: FileUploadResponse = await uploadFile(formData, null);
 
           if (response.file_paths && response.file_paths.length > 0) {
+            console.log("Uploaded file:", response.file_paths[0]);
+
             const uploadedFile: FileResponse = {
               id: Date.now(),
               name: file.name,
               document_id: response.file_paths[0],
-              folder_id: currentFolder || null,
+              folder_id: null,
               size: file.size,
               type: file.type,
               lastModified: new Date().toISOString(),
               token_count: 0,
             };
+            console.log("ADDING A FILE");
+            console.log("Uploaded file:", uploadedFile);
             addSelectedFile(uploadedFile);
+          } else {
+            console.log("Response:", response);
+            console.log("No file paths returned");
           }
         }
         await refreshFolders();
@@ -483,7 +499,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     if (currentFolder !== null) {
       return (
         <div
-          className="flex items-center mb-4 text-sm text-gray-600 cursor-pointer hover:text-gray-800"
+          className="flex items-center mb-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800"
           onClick={() => setCurrentFolder(null)}
         >
           <svg
@@ -520,8 +536,8 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
     >
       <div className="grid h-full grid-cols-2 overflow-y-hidden w-full divide-x divide-gray-200">
         <div className="w-full h-full pb-4 overflow-y-auto">
-          <div className="mb-4 flex gap-x-2 w-full pr-4">
-            <div className="w-full relative">
+          <div className="sticky flex flex-col  gap-y-2  border-b bg-background  z-[1000] top-0 mb-2 flex gap-x-2 w-full pr-4">
+            <div className=" w-full relative">
               <input
                 type="text"
                 placeholder="Search folders..."
@@ -545,11 +561,11 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                 </svg>
               </div>
             </div>
+            {renderNavigation()}
           </div>
 
           {filteredFolders.length + currentFolderFiles.length > 0 ? (
-            <div className="flex-grow overflow-y-auto pr-4">
-              {renderNavigation()}
+            <div className="flex-grow pr-4">
               <DndContext
                 sensors={sensors}
                 onDragStart={handleDragStart}
@@ -565,7 +581,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
                   ]}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-3">
+                  <div className="overflow-y-auto space-y-3">
                     {currentFolder === null
                       ? filteredFolders.map((folder) => (
                           <FilePickerFolderItem
@@ -648,7 +664,7 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
           onDragEnter={() => setIsHoveringRight(true)}
           onDragLeave={() => setIsHoveringRight(false)}
         >
-          <div className="shrink flex h-full overflow-y-auto mb-1">
+          <div className="shrink flex h-full  overflow-y-auto mb-1">
             <SelectedItemsList
               folders={selectedItems.folders}
               files={selectedItems.files}
@@ -695,17 +711,20 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
               >
                 <div className="w-full gap-x-2 flex">
                   <input
-                    type="url"
-                    placeholder="Enter URL"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    type="text"
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="Enter URL"
+                    className="flex-grow !text-sm mr-2 px-2 py-1 border border-gray-300 rounded"
                   />
                   <Button
-                    type="submit"
+                    variant="default"
+                    className="!text-sm"
+                    size="xs"
+                    onClick={handleCreateFileFromLink}
                     disabled={isCreatingFileFromLink || !linkUrl}
                   >
-                    {isCreatingFileFromLink ? "Creating..." : "Add"}
+                    {isCreatingFileFromLink ? "Creating..." : "Create"}
                   </Button>
                 </div>
               </form>

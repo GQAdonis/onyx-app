@@ -19,6 +19,16 @@ def prefix_external_group(ext_group_name: str) -> str:
     return f"external_group:{ext_group_name}"
 
 
+def prefix_user_file(user_file_id: int) -> str:
+    """Prefixes a user file id to eliminate collision with group names."""
+    return f"user_file:{user_file_id}"
+
+
+def prefix_user_folder(user_folder_id: int) -> str:
+    """Prefixes a user folder id to eliminate collision with group names."""
+    return f"user_folder:{user_folder_id}"
+
+
 def build_ext_group_name_for_onyx(ext_group_name: str, source: DocumentSource) -> str:
     """
     External groups may collide across sources, every source needs its own prefix.
