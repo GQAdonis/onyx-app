@@ -17,7 +17,7 @@ export const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   };
 
   return (
-    <div className="mt-6 border border-neutral-100 bg-transparent rounded-lg p-4 shadow-sm hover:bg-neutral-50 transition-colors duration-200 cursor-pointer">
+    <div className="mt-6 border border-neutral-200 bg-transparent rounded-lg p-4 shadow-sm hover:bg-neutral-50 transition-colors duration-200 cursor-pointer">
       <label htmlFor="file-upload" className="w-full h-full block">
         <div className="flex flex-col gap-y-2  items-center justify-between">
           <p className="text-sm text-gray-500">Add files to this project </p>

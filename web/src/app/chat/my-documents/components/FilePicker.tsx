@@ -379,6 +379,8 @@ export const FilePickerModal: React.FC<FilePickerModalProps> = ({
         }
       }
     });
+    setSelectedFiles(items.files);
+    setSelectedFolders(items.folders);
     return items;
   }, [folders, selectedFileIds, selectedFolderIds]);
 

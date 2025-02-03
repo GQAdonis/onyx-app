@@ -14,6 +14,7 @@ from onyx.document_index.vespa_constants import HIDDEN
 from onyx.document_index.vespa_constants import METADATA_LIST
 from onyx.document_index.vespa_constants import SOURCE_TYPE
 from onyx.document_index.vespa_constants import TENANT_ID
+from onyx.document_index.vespa_constants import USER_FILE
 from onyx.utils.logger import setup_logger
 from shared_configs.configs import MULTI_TENANT
 
@@ -82,6 +83,8 @@ def build_vespa_filters(
     filter_str += _build_or_filters(METADATA_LIST, tag_attributes)
 
     filter_str += _build_or_filters(DOCUMENT_SETS, filters.document_set)
+
+    filter_str += _build_or_filters(USER_FILE, filters.user_file)
 
     filter_str += _build_time_filter(filters.time_cutoff)
 

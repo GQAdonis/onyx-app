@@ -49,8 +49,7 @@ from onyx.document_index.vespa_constants import SOURCE_TYPE
 from onyx.document_index.vespa_constants import TENANT_ID
 from onyx.document_index.vespa_constants import TITLE
 from onyx.document_index.vespa_constants import TITLE_EMBEDDING
-from onyx.document_index.vespa_constants import USER_FILES
-from onyx.document_index.vespa_constants import USER_FOLDERS
+from onyx.document_index.vespa_constants import USER_FILE
 from onyx.indexing.models import DocMetadataAwareIndexChunk
 from onyx.indexing.models import EmbeddingProvider
 from onyx.indexing.models import MultipassConfig
@@ -186,10 +185,11 @@ def _index_vespa_chunk(
         # which only calls VespaIndex.update
         ACCESS_CONTROL_LIST: {acl_entry: 1 for acl_entry in chunk.access.to_acl()},
         DOCUMENT_SETS: {document_set: 1 for document_set in chunk.document_sets},
-        USER_FILES: {user_file: 1 for user_file in chunk.user_files},
-        USER_FOLDERS: {user_folder: 1 for user_folder in chunk.user_folders},
+        USER_FILE: chunk.user_file if chunk.user_file is not None else None,
+        # USER_FOLDERS: {user_folder: 1 for user_folder in chunk.user_folders},
         BOOST: chunk.boost,
     }
+    print(vespa_document_fields)
 
     if multitenant:
         if chunk.tenant_id:

@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 
 from fastapi import UploadFile
@@ -15,6 +16,8 @@ from onyx.llm.factory import get_default_llms
 from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.server.documents.connector import upload_files
 
+USER_FILE_CONSTANT = "USER_FILE_CONNECTOR"
+
 
 def create_user_files(
     files: List[UploadFile],
@@ -23,6 +26,9 @@ def create_user_files(
     db_session: Session,
 ) -> list[UserFile]:
     print("user file endpoint")
+    print(folder_id)
+    print("FILES ARE")
+    print([file.filename for file in files])
     upload_response = upload_files(files, db_session)
     user_files = []
 
@@ -42,9 +48,9 @@ def create_user_files(
     for file_path, file in zip(upload_response.file_paths, files):
         new_file = UserFile(
             user_id=user.id if user else None,
-            folder_id=folder_id if folder_id != -1 else None,
+            folder_id=folder_id,
             file_id=file_path,
-            document_id=file_path,
+            document_id="FILE_CONNECTOR__" + file_path,
             name=file.filename,
             token_count=token_count,
         )
@@ -100,3 +106,74 @@ def unshare_folder_with_assistant(
     if folder:
         for file in folder.files:
             unshare_file_with_assistant(file.id, assistant_id, db_session)
+
+
+def fetch_user_files_for_documents(
+    document_ids: list[str],
+    db_session: Session,
+) -> dict[str, None | int]:
+    # Query UserFile objects for the given document_ids
+    user_files = (
+        db_session.query(UserFile).filter(UserFile.document_id.in_(document_ids)).all()
+    )
+
+    # Create a dictionary mapping document_ids to UserFile objects
+    result = {doc_id: None for doc_id in document_ids}
+    for user_file in user_files:
+        result[user_file.document_id] = user_file.id
+
+    return result
+
+
+def upsert_user_folder(
+    db_session: Session,
+    id: int | None = None,
+    user_id: int | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    created_at: datetime.datetime | None = None,
+    user: User | None = None,
+    files: list[UserFile] | None = None,
+    assistants: list[Persona] | None = None,
+) -> UserFolder:
+    if id is not None:
+        user_folder = db_session.query(UserFolder).filter_by(id=id).first()
+    else:
+        user_folder = (
+            db_session.query(UserFolder).filter_by(name=name, user_id=user_id).first()
+        )
+
+    if user_folder:
+        if user_id is not None:
+            user_folder.user_id = user_id
+        if name is not None:
+            user_folder.name = name
+        if description is not None:
+            user_folder.description = description
+        if created_at is not None:
+            user_folder.created_at = created_at
+        if user is not None:
+            user_folder.user = user
+        if files is not None:
+            user_folder.files = files
+        if assistants is not None:
+            user_folder.assistants = assistants
+    else:
+        user_folder = UserFolder(
+            id=id,
+            user_id=user_id,
+            name=name,
+            description=description,
+            created_at=created_at or datetime.datetime.utcnow(),
+            user=user,
+            files=files or [],
+            assistants=assistants or [],
+        )
+        db_session.add(user_folder)
+
+    db_session.flush()
+    return user_folder
+
+
+def get_user_folder_by_name(db_session: Session, name: str) -> UserFolder | None:
+    return db_session.query(UserFolder).filter(UserFolder.name == name).first()

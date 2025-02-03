@@ -100,6 +100,9 @@ def get_folder(
     return UserFolderSnapshot.from_model(folder)
 
 
+RECENT_DOCS_FOLDER_ID = -1
+
+
 @router.post("/user/file/upload")
 def upload_user_files(
     files: List[UploadFile] = File(...),
@@ -145,7 +148,7 @@ def upload_user_files(
             connector_id=connector.id,
             credential_id=credential.id,
             cc_pair_name=f"UserFileCCPair-{int(time.time())}",
-            access_type=AccessType.PUBLIC,
+            access_type=AccessType.PRIVATE,
             auto_sync_options=None,
             groups=[],
         )
@@ -421,7 +424,7 @@ def create_file_from_link(
                 connector_id=connector.id,
                 credential_id=credential.id,
                 cc_pair_name=f"UserFileCCPair-{int(time.time())}",
-                access_type=AccessType.PUBLIC,
+                access_type=AccessType.PRIVATE,
                 auto_sync_options=None,
                 groups=[],
             )

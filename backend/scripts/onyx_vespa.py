@@ -420,6 +420,7 @@ def get_document_acls(
             title = fields.get("title", "")
             source_type = fields.get("source_type", "")
             doc_sets = fields.get("document_sets", [])
+            user_file = fields.get("user_file", None)
             source_links_raw = fields.get("source_links", "{}")
             try:
                 source_links = json.loads(source_links_raw)
@@ -433,6 +434,7 @@ def get_document_acls(
             print(f"Title: {title}")
             print(f"Source Type: {source_type}")
             print(f"Document Sets: {doc_sets}")
+            print(f"User File: {user_file}")
             if MULTI_TENANT:
                 print(f"Tenant ID: {fields.get('tenant_id', 'N/A')}")
             print("-" * 80)

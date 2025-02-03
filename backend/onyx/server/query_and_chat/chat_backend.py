@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import os
+import time
 import uuid
 from collections.abc import Callable
 from collections.abc import Generator
@@ -27,10 +28,12 @@ from onyx.chat.prompt_builder.citations_prompt import (
     compute_max_document_tokens_for_persona,
 )
 from onyx.configs.app_configs import WEB_DOMAIN
+from onyx.configs.constants import DocumentSource
 from onyx.configs.constants import FileOrigin
 from onyx.configs.constants import MessageType
 from onyx.configs.constants import MilestoneRecordType
 from onyx.configs.model_configs import LITELLM_PASS_THROUGH_HEADERS
+from onyx.connectors.models import InputType
 from onyx.db.chat import add_chats_to_session_from_slack_thread
 from onyx.db.chat import create_chat_session
 from onyx.db.chat import create_new_chat_message
@@ -45,13 +48,18 @@ from onyx.db.chat import get_or_create_root_message
 from onyx.db.chat import set_as_latest_chat_message
 from onyx.db.chat import translate_db_message_to_chat_message_detail
 from onyx.db.chat import update_chat_session
+from onyx.db.connector import create_connector
+from onyx.db.connector_credential_pair import add_credential_to_connector
+from onyx.db.credentials import create_credential
 from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
 from onyx.db.engine import get_session_with_tenant
+from onyx.db.enums import AccessType
 from onyx.db.feedback import create_chat_message_feedback
 from onyx.db.feedback import create_doc_retrieval_feedback
 from onyx.db.models import User
 from onyx.db.persona import get_persona_by_id
+from onyx.db.user_documents import create_user_files
 from onyx.file_processing.extract_file_text import docx_to_txt_filename
 from onyx.file_processing.extract_file_text import extract_file_text
 from onyx.file_store.file_store import get_default_file_store
@@ -64,6 +72,8 @@ from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.secondary_llm_flows.chat_session_naming import (
     get_renamed_conversation_name,
 )
+from onyx.server.documents.models import ConnectorBase
+from onyx.server.documents.models import CredentialBase
 from onyx.server.query_and_chat.models import ChatFeedbackRequest
 from onyx.server.query_and_chat.models import ChatMessageIdentifier
 from onyx.server.query_and_chat.models import ChatRenameRequest
@@ -84,6 +94,7 @@ from onyx.utils.headers import get_custom_tool_additional_request_headers
 from onyx.utils.logger import setup_logger
 from onyx.utils.telemetry import create_milestone_and_report
 
+RECENT_DOCS_FOLDER_ID = -1
 
 logger = setup_logger()
 
@@ -597,7 +608,7 @@ def seed_chat_from_slack(
 def upload_files_for_chat(
     files: list[UploadFile],
     db_session: Session = Depends(get_session),
-    _: User | None = Depends(current_user),
+    user: User | None = Depends(current_user),
 ) -> dict[str, list[FileDescriptor]]:
     image_content_types = {"image/jpeg", "image/png", "image/webp"}
     csv_content_types = {"text/csv"}
@@ -704,6 +715,52 @@ def upload_files_for_chat(
             file_info.append((text_file_id, file.filename, ChatFileType.PLAIN_TEXT))
         else:
             file_info.append((file_id, file.filename, file_type))
+
+        # 5) Create a user file for each uploaded file
+        user_files = create_user_files([file], RECENT_DOCS_FOLDER_ID, user, db_session)
+        for user_file in user_files:
+            # 6) Create connector
+            connector_base = ConnectorBase(
+                name=f"UserFile-{int(time.time())}",
+                source=DocumentSource.FILE,
+                input_type=InputType.LOAD_STATE,
+                connector_specific_config={
+                    "file_locations": [user_file.file_id],
+                },
+                refresh_freq=None,
+                prune_freq=None,
+                indexing_start=None,
+            )
+            connector = create_connector(
+                db_session=db_session,
+                connector_data=connector_base,
+            )
+
+            # 7) Create credential
+            credential_info = CredentialBase(
+                credential_json={},
+                admin_public=True,
+                source=DocumentSource.FILE,
+                curator_public=True,
+                groups=[],
+                name=f"UserFileCredential-{int(time.time())}",
+                is_user_file=True,
+            )
+            credential = create_credential(credential_info, user, db_session)
+
+            # 8) Create connector credential pair
+            cc_pair = add_credential_to_connector(
+                db_session=db_session,
+                user=user,
+                connector_id=connector.id,
+                credential_id=credential.id,
+                cc_pair_name=f"UserFileCCPair-{int(time.time())}",
+                access_type=AccessType.PRIVATE,
+                auto_sync_options=None,
+                groups=[],
+            )
+            user_file.cc_pair_id = cc_pair.data
+            db_session.commit()
 
     return {
         "files": [
