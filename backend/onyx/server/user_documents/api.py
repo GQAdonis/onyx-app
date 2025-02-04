@@ -116,7 +116,7 @@ def upload_user_files(
     user_files = create_user_files(files, folder_id, user, db_session)
     for user_file in user_files:
         connector_base = ConnectorBase(
-            name=f"UserFile-{int(time.time())}",
+            name=f"UserFile-{user_file.file_id}-{int(time.time())}",
             source=DocumentSource.FILE,
             input_type=InputType.LOAD_STATE,
             connector_specific_config={
@@ -126,6 +126,7 @@ def upload_user_files(
             prune_freq=None,
             indexing_start=None,
         )
+
         connector = create_connector(
             db_session=db_session,
             connector_data=connector_base,
@@ -137,7 +138,7 @@ def upload_user_files(
             source=DocumentSource.FILE,
             curator_public=True,
             groups=[],
-            name=f"UserFileCredential-{int(time.time())}",
+            name=f"UserFileCredential-{user_file.file_id}-{int(time.time())}",
             is_user_file=True,
         )
         credential = create_credential(credential_info, user, db_session)
@@ -147,7 +148,7 @@ def upload_user_files(
             user=user,
             connector_id=connector.id,
             credential_id=credential.id,
-            cc_pair_name=f"UserFileCCPair-{int(time.time())}",
+            cc_pair_name=f"UserFileCCPair-{user_file.file_id}-{int(time.time())}",
             access_type=AccessType.PRIVATE,
             auto_sync_options=None,
             groups=[],
@@ -393,7 +394,7 @@ def create_file_from_link(
         # Create connector and credential (same as in upload_user_files)
         for user_file in user_files:
             connector_base = ConnectorBase(
-                name=f"UserFile-{int(time.time())}",
+                name=f"UserFile-{user_file.file_id}-{int(time.time())}",
                 source=DocumentSource.FILE,
                 input_type=InputType.LOAD_STATE,
                 connector_specific_config={
@@ -403,6 +404,7 @@ def create_file_from_link(
                 prune_freq=None,
                 indexing_start=None,
             )
+
             connector = create_connector(
                 db_session=db_session,
                 connector_data=connector_base,
@@ -414,7 +416,7 @@ def create_file_from_link(
                 source=DocumentSource.FILE,
                 curator_public=True,
                 groups=[],
-                name=f"UserFileCredential-{int(time.time())}",
+                name=f"UserFileCredential-{user_file.file_id}-{int(time.time())}",
             )
             credential = create_credential(credential_info, user, db_session)
 

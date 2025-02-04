@@ -226,7 +226,7 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
   const tokenPercentage = (totalTokens / maxTokens) * 100;
 
   return (
-    <div className="min-h-full w-full min-w-0 flex-1 mx-auto mt-[115px] max-w-5xl px-4 pb-20 md:pl-8 lg:mt-6 md:pr-8 2xl:pr-14">
+    <div className="min-h-full w-full min-w-0 flex-1 mx-auto max-w-5xl px-4 pb-20 md:pl-8 mt-6 md:pr-8 2xl:pr-14">
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1 mr-4">
           <div
@@ -271,6 +271,8 @@ export default function UserFolderContent({ folderId }: { folderId: number }) {
             onDelete={deleteItem}
             onDownload={downloadItem}
             onUpload={handleUpload}
+            disabled={folderDetails.id === -1}
+            // NOTE: this should be moved to a `constants.ts` file
           />
         </div>
 

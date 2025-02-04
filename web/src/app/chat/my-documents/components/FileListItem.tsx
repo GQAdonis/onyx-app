@@ -15,7 +15,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
-import { FiDownload, FiEdit, FiSearch, FiTrash } from "react-icons/fi";
+import {
+  FiArrowDown,
+  FiDownload,
+  FiEdit,
+  FiSearch,
+  FiTrash,
+} from "react-icons/fi";
 interface FileListItemProps {
   file: FileResponse;
   isSelected?: boolean;
@@ -105,6 +111,13 @@ export const FileListItem: React.FC<FileListItemProps> = ({
         </PopoverTrigger>
         <PopoverContent className="!p-0 w-40">
           <div className=" space-y-0">
+            <Button
+              variant="menu"
+              onClick={() => onSummarize(file.document_id)}
+            >
+              <FiArrowDown className="h-4 w-4" />
+              Move
+            </Button>
             <Button
               variant="menu"
               onClick={() => onSummarize(file.document_id)}

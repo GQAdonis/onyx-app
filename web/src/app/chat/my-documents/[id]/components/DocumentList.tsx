@@ -22,6 +22,7 @@ interface DocumentListProps {
   onDownload: (documentId: string) => Promise<void>;
   onUpload: (files: File[]) => void;
   isLoading: boolean;
+  disabled?: boolean;
 }
 
 export const DocumentList: React.FC<DocumentListProps> = ({
@@ -32,6 +33,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   onDownload,
   onUpload,
   isLoading,
+  disabled,
 }) => {
   const [presentingDocument, setPresentingDocument] =
     useState<MinimalOnyxDocument | null>(null);
@@ -56,7 +58,15 @@ export const DocumentList: React.FC<DocumentListProps> = ({
           {view === "grid" ? <List size={16} /> : <Grid size={16} />}
         </Button>
       </div>
-      <FileUploadSection onUpload={onUpload} />
+      <FileUploadSection
+        disabled={disabled}
+        disabledMessage={
+          disabled
+            ? "This folder cannot be edited. It contains your recent documents."
+            : undefined
+        }
+        onUpload={onUpload}
+      />
 
       <div className={view === "grid" ? "grid grid-cols-4 gap-4" : "space-y-2"}>
         {files.map((file) => (

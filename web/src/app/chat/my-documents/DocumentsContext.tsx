@@ -44,7 +44,7 @@ interface DocumentsContextType {
   searchQuery: string;
   page: number;
   refreshFolders: () => Promise<void>;
-  createFolder: (name: string, description: string) => Promise<void>;
+  createFolder: (name: string, description: string) => Promise<FolderResponse>;
   deleteItem: (itemId: number, isFolder: boolean) => Promise<void>;
   moveItem: (
     itemId: number,
@@ -162,7 +162,7 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({
         const errorData = await response.json();
         throw new Error(errorData.detail || "Failed to create folder");
       }
-      await refreshFolders();
+      return (await response.json()) as FolderResponse;
     },
     [refreshFolders]
   );

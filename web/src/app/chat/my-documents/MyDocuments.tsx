@@ -113,13 +113,14 @@ export default function MyDocuments() {
 
   const handleCreateFolder = async (name: string, description: string) => {
     try {
-      await createFolder(name, description);
-      setPopup({
-        message: "Folder created successfully",
-        type: "success",
-      });
-      await refreshFolders();
-      setIsCreateFolderOpen(false);
+      const folderResponse = await createFolder(name, description);
+      // setPopup({
+      //   message: "Folder created successfully",
+      //   type: "success",
+      // });
+      // await refreshFolders();
+      // setIsCreateFolderOpen(false);
+      router.push(`/chat/my-documents/${folderResponse.id}`);
     } catch (error) {
       console.error("Error creating folder:", error);
       setPopup({
