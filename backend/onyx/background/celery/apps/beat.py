@@ -150,13 +150,11 @@ class DynamicTenantScheduler(PersistentScheduler):
 
         new_schedule = self._generate_schedule(tenant_ids)
 
-        # if DynamicTenantScheduler._compare_schedules(current_schedule, new_schedule):
-        #     logger.info(
-        #         "_try_updating_schedule: Current schedule is up to date, no changes needed"
-        #     )
-        #     return
-        print("NEW SCHEDULE IS ")
-        print(new_schedule)
+        if DynamicTenantScheduler._compare_schedules(current_schedule, new_schedule):
+            logger.info(
+                "_try_updating_schedule: Current schedule is up to date, no changes needed"
+            )
+            return
 
         logger.info(
             "Schedule update required",

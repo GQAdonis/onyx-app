@@ -27,22 +27,17 @@ def build_vespa_filters(
     remove_trailing_and: bool = False,  # Set to True when using as a complete Vespa query
 ) -> str:
     def _build_or_filters(key: str, vals: list[str] | None) -> str:
-        print(f"Inputs: key={key}, vals={vals}")
-
         if vals is None:
-            print("Output: ''")
             return ""
 
         valid_vals = [val for val in vals if val]
         if not key or not valid_vals:
-            print("Output: ''")
             return ""
 
         eq_elems = [f'{key} contains "{elem}"' for elem in valid_vals]
         or_clause = " or ".join(eq_elems)
         result = f"({or_clause}) and "
 
-        print(f"Output: '{result}'")
         return result
 
     def _build_time_filter(

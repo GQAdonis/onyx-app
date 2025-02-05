@@ -56,7 +56,6 @@ from shared_configs.configs import INDEXING_MODEL_SERVER_HOST
 from shared_configs.configs import INDEXING_MODEL_SERVER_PORT
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import SENTRY_DSN
-from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -267,10 +266,6 @@ def connector_indexing_task(
     *,
     tenant_id: str | None,
 ) -> int | None:
-    if not tenant_id:
-        logger.error("Tenant ID is required")
-        print("TENANT ID IS REQUIRED")
-        raise ValueError("Tenant ID is required")
     """Indexing task. For a cc pair, this task pulls all document IDs from the source
     and compares those IDs to locally stored documents and deletes all locally stored IDs missing
     from the most recently pulled document ID list
@@ -400,8 +395,6 @@ def connector_indexing_task(
     redis_connector_index.set_fence(payload)
 
     try:
-        print("IN THE CONNECTOR INDEXING TASK WITH TENNT ID", tenant_id)
-        print("THE ACTUAL TENANT ID IS ", CURRENT_TENANT_ID_CONTEXTVAR.get())
         with get_session_with_current_tenant() as db_session:
             attempt = get_index_attempt(db_session, index_attempt_id)
             if not attempt:

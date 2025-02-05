@@ -264,8 +264,6 @@ def cloud_beat_task_generator(
             if IGNORED_SYNCING_TENANT_LIST and tenant_id in IGNORED_SYNCING_TENANT_LIST:
                 continue
 
-            print("NOM NOM SENDING A TASK")
-            print(tenant_id, task_name)
             self.app.send_task(
                 task_name,
                 kwargs=dict(
