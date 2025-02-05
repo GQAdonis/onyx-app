@@ -261,7 +261,6 @@ def search_for_document(
     yql_query = (
         f'select * from sources {index_name} where document_id contains "{document_id}"'
     )
-    print(yql_query)
     params = {"yql": yql_query}
     if max_hits is not None:
         params["hits"] = max_hits
@@ -483,14 +482,12 @@ def get_number_of_chunks_we_think_exist(
         previous_chunk_count=current_chunk_count,
         new_chunk_count=0,
     )
-    print(f"Doc info: {doc_info}")
 
     chunk_ids = get_document_chunk_ids(
         enriched_document_info_list=[doc_info],
         tenant_id=tenant_id,
         large_chunks_enabled=False,
     )
-    print(f"Chunk IDs: {chunk_ids}")
     return len(chunk_ids)
 
 
@@ -568,8 +565,6 @@ class VespaDebugging:
 
     def compare_chunk_count(self, document_id: str) -> tuple[int, int]:
         docs = search_for_document(self.index_name, document_id, max_hits=None)
-        for doc in docs:
-            print(doc)
         number_of_chunks_we_think_exist = get_number_of_chunks_we_think_exist(
             document_id, self.index_name, self.tenant_id
         )
@@ -605,7 +600,6 @@ class VespaDebugging:
 
 
 def main() -> None:
-    # CLI entry point.
     parser = argparse.ArgumentParser(description="Vespa debugging tool")
     parser.add_argument(
         "--action",
