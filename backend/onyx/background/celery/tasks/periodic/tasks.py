@@ -36,7 +36,7 @@ def kombu_message_cleanup_task(self: Any, tenant_id: str | None) -> int:
     ctx["deleted"] = 0
     ctx["cleanup_age"] = KOMBU_MESSAGE_CLEANUP_AGE
     ctx["page_limit"] = KOMBU_MESSAGE_CLEANUP_PAGE_LIMIT
-    with get_session_with_current_tenant(tenant_id) as db_session:
+    with get_session_with_current_tenant() as db_session:
         # Exit the task if we can't take the advisory lock
         result = db_session.execute(
             text("SELECT pg_try_advisory_lock(:id)"),

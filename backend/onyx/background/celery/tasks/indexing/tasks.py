@@ -72,8 +72,8 @@ def check_for_indexing(self: Task, *, tenant_id: str | None) -> int | None:
 
     tasks_created = 0
     locked = False
-    redis_client = get_redis_client(tenant_id=tenant_id)
-    redis_client_replica = get_redis_replica_client(tenant_id=tenant_id)
+    redis_client = get_redis_client()
+    redis_client_replica = get_redis_replica_client()
 
     # we need to use celery's redis client to access its redis data
     # (which lives on a different db number)
@@ -92,7 +92,7 @@ def check_for_indexing(self: Task, *, tenant_id: str | None) -> int | None:
         locked = True
 
         # check for search settings swap
-        with get_session_with_current_tenant(tenant_id=tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             old_search_settings = check_index_swap(db_session=db_session)
             current_search_settings = get_current_search_settings(db_session)
             # So that the first time users aren't surprised by really slow speed of first
@@ -113,7 +113,7 @@ def check_for_indexing(self: Task, *, tenant_id: str | None) -> int | None:
         # gather cc_pair_ids
         lock_beat.reacquire()
         cc_pair_ids: list[int] = []
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             cc_pairs = fetch_connector_credential_pairs(db_session)
             for cc_pair_entry in cc_pairs:
                 cc_pair_ids.append(cc_pair_entry.id)
@@ -123,7 +123,7 @@ def check_for_indexing(self: Task, *, tenant_id: str | None) -> int | None:
             lock_beat.reacquire()
 
             redis_connector = RedisConnector(tenant_id, cc_pair_id)
-            with get_session_with_current_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant() as db_session:
                 search_settings_list = get_active_search_settings_list(db_session)
                 for search_settings_instance in search_settings_list:
                     redis_connector_index = redis_connector.new_index(
@@ -199,7 +199,7 @@ def check_for_indexing(self: Task, *, tenant_id: str | None) -> int | None:
 
         # Fail any index attempts in the DB that don't have fences
         # This shouldn't ever happen!
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             unfenced_attempt_ids = get_unfenced_index_attempt_ids(
                 db_session, redis_client
             )
@@ -315,7 +315,7 @@ def connector_indexing_task(
     redis_connector = RedisConnector(tenant_id, cc_pair_id)
     redis_connector_index = redis_connector.new_index(search_settings_id)
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     if redis_connector.delete.fenced:
         raise RuntimeError(
@@ -394,7 +394,7 @@ def connector_indexing_task(
     redis_connector_index.set_fence(payload)
 
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             attempt = get_index_attempt(db_session, index_attempt_id)
             if not attempt:
                 raise ValueError(
@@ -457,7 +457,7 @@ def connector_indexing_task(
         )
         if attempt_found:
             try:
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     mark_attempt_failed(
                         index_attempt_id, db_session, failure_reason=str(e)
                     )
@@ -643,7 +643,7 @@ def connector_indexing_proxy_task(
             )
 
             try:
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     mark_attempt_canceled(
                         index_attempt_id,
                         db_session,
@@ -666,7 +666,7 @@ def connector_indexing_proxy_task(
         # if the spawned task is still running, restart the check once again
         # if the index attempt is not in a finished status
         try:
-            with get_session_with_current_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant() as db_session:
                 index_attempt = get_index_attempt(
                     db_session=db_session, index_attempt_id=index_attempt_id
                 )

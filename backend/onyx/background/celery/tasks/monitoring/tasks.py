@@ -662,7 +662,7 @@ def monitor_background_processes(self: Task, *, tenant_id: str | None) -> None:
         CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
 
     task_logger.info("Starting background monitoring")
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     lock_monitoring: RedisLock = r.lock(
         OnyxRedisLocks.MONITOR_BACKGROUND_PROCESSES_LOCK,
@@ -677,7 +677,7 @@ def monitor_background_processes(self: Task, *, tenant_id: str | None) -> None:
     try:
         # Get Redis client for Celery broker
         redis_celery = self.app.broker_connection().channel().client  # type: ignore
-        redis_std = get_redis_client(tenant_id=tenant_id)
+        redis_std = get_redis_client()
 
         # Define metric collection functions and their dependencies
         metric_functions: list[Callable[[], list[Metric]]] = [
@@ -687,7 +687,7 @@ def monitor_background_processes(self: Task, *, tenant_id: str | None) -> None:
         ]
 
         # Collect and log each metric
-        with get_session_with_current_tenant(tenant_id=tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             for metric_fn in metric_functions:
                 metrics = metric_fn()
                 for metric in metrics:

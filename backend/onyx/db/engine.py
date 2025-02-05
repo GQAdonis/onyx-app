@@ -383,6 +383,7 @@ def get_session_with_current_tenant(
         yield session
 
 
+# Used in multi tenant mode when need to refer to the shared `public` schema
 @contextmanager
 def get_session_with_shared_schema() -> Generator[Session, None, None]:
     token = CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA)

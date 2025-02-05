@@ -313,7 +313,7 @@ def validate_indexing_fences(
         if not key_str.startswith(RedisConnectorIndex.FENCE_PREFIX):
             continue
 
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             validate_indexing_fence(
                 tenant_id,
                 key_bytes,

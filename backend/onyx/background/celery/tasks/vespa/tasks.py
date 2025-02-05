@@ -95,7 +95,6 @@ from onyx.utils.variable_functionality import (
 from onyx.utils.variable_functionality import global_version
 from onyx.utils.variable_functionality import noop_fallback
 from shared_configs.configs import MULTI_TENANT
-from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -113,11 +112,8 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
     """Runs periodically to check if any document needs syncing.
     Generates sets of tasks for Celery if syncing is needed."""
     time_start = time.monotonic()
-    print("IN THE VESPA SYCN TASK")
-    print("THIS IS THE TENANT ID", tenant_id)
-    print("THIS IS THE CONTEXT", CURRENT_TENANT_ID_CONTEXTVAR.get())
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     lock_beat: RedisLock = r.lock(
         OnyxRedisLocks.CHECK_VESPA_SYNC_BEAT_LOCK,
@@ -129,7 +125,7 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
         return None
 
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             try_generate_stale_document_sync_tasks(
                 self.app, VESPA_SYNC_MAX_TASKS, db_session, r, lock_beat, tenant_id
             )
@@ -137,7 +133,7 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
         # region document set scan
         lock_beat.reacquire()
         document_set_ids: list[int] = []
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             # check if any document sets are not synced
             document_set_info = fetch_document_sets(
                 user_id=None, db_session=db_session, include_outdated=True
@@ -148,7 +144,7 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
 
         for document_set_id in document_set_ids:
             lock_beat.reacquire()
-            with get_session_with_current_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant() as db_session:
                 try_generate_document_set_sync_tasks(
                     self.app, document_set_id, db_session, r, lock_beat, tenant_id
                 )
@@ -168,7 +164,7 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
                 pass
             else:
                 usergroup_ids: list[int] = []
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     user_groups = fetch_user_groups(
                         db_session=db_session, only_up_to_date=False
                     )
@@ -178,7 +174,7 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
 
                 for usergroup_id in usergroup_ids:
                     lock_beat.reacquire()
-                    with get_session_with_current_tenant(tenant_id) as db_session:
+                    with get_session_with_current_tenant() as db_session:
                         try_generate_user_group_sync_tasks(
                             self.app, usergroup_id, db_session, r, lock_beat, tenant_id
                         )
@@ -531,7 +527,7 @@ def monitor_connector_deletion_taskset(
         f"Connector deletion progress: cc_pair={cc_pair_id} remaining={remaining} initial={fence_data.num_tasks}"
     )
     if remaining > 0:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             update_sync_record_status(
                 db_session=db_session,
                 entity_id=cc_pair_id,
@@ -541,7 +537,7 @@ def monitor_connector_deletion_taskset(
             )
         return
 
-    with get_session_with_current_tenant(tenant_id) as db_session:
+    with get_session_with_current_tenant() as db_session:
         cc_pair = get_connector_credential_pair_from_id(
             db_session=db_session,
             cc_pair_id=cc_pair_id,
@@ -825,7 +821,7 @@ def monitor_vespa_sync(self: Task, tenant_id: str | None) -> bool | None:
 
     time_start = time.monotonic()
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     # Replica usage notes
     #
@@ -836,7 +832,7 @@ def monitor_vespa_sync(self: Task, tenant_id: str | None) -> bool | None:
     # then read from the replica. In this case, monitoring work could be done on a fence
     # that no longer exists. To avoid this, we scan from the replica, but double check
     # the result on the master.
-    r_replica = get_redis_replica_client(tenant_id=tenant_id)
+    r_replica = get_redis_replica_client()
 
     lock_beat: RedisLock = r.lock(
         OnyxRedisLocks.MONITOR_VESPA_SYNC_BEAT_LOCK,
@@ -920,7 +916,7 @@ def monitor_vespa_sync(self: Task, tenant_id: str | None) -> bool | None:
             if key_str == RedisGlobalConnectorCredentialPair.FENCE_KEY:
                 monitor_connector_taskset(r)
             elif key_str.startswith(RedisDocumentSet.FENCE_PREFIX):
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     monitor_document_set_taskset(tenant_id, key_bytes, r, db_session)
             elif key_str.startswith(RedisUserGroup.FENCE_PREFIX):
                 monitor_usergroup_taskset = (
@@ -930,18 +926,18 @@ def monitor_vespa_sync(self: Task, tenant_id: str | None) -> bool | None:
                         noop_fallback,
                     )
                 )
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     monitor_usergroup_taskset(tenant_id, key_bytes, r, db_session)
             elif key_str.startswith(RedisConnectorDelete.FENCE_PREFIX):
                 monitor_connector_deletion_taskset(tenant_id, key_bytes, r)
             elif key_str.startswith(RedisConnectorPrune.FENCE_PREFIX):
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     monitor_ccpair_pruning_taskset(tenant_id, key_bytes, r, db_session)
             elif key_str.startswith(RedisConnectorIndex.FENCE_PREFIX):
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     monitor_ccpair_indexing_taskset(tenant_id, key_bytes, r, db_session)
             elif key_str.startswith(RedisConnectorPermissionSync.FENCE_PREFIX):
-                with get_session_with_current_tenant(tenant_id) as db_session:
+                with get_session_with_current_tenant() as db_session:
                     monitor_ccpair_permissions_taskset(
                         tenant_id, key_bytes, r, db_session
                     )
@@ -984,7 +980,7 @@ def vespa_metadata_sync_task(
     start = time.monotonic()
 
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             active_search_settings = get_active_search_settings(db_session)
             doc_index = get_default_document_index(
                 search_settings=active_search_settings.primary,

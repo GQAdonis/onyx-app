@@ -78,7 +78,7 @@ def document_by_cc_pair_cleanup_task(
     start = time.monotonic()
 
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             action = "skip"
             chunks_affected = 0
 
@@ -203,7 +203,7 @@ def document_by_cc_pair_cleanup_task(
                 f"Max celery task retries reached. Marking doc as dirty for reconciliation: "
                 f"doc={document_id}"
             )
-            with get_session_with_current_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant() as db_session:
                 # delete the cc pair relationship now and let reconciliation clean it up
                 # in vespa
                 delete_document_by_connector_credential_pair__no_commit(

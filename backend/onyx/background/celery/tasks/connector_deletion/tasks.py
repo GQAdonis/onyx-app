@@ -41,7 +41,7 @@ class TaskDependencyError(RuntimeError):
 def check_for_connector_deletion_task(
     self: Task, *, tenant_id: str | None
 ) -> bool | None:
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     lock_beat: RedisLock = r.lock(
         OnyxRedisLocks.CHECK_CONNECTOR_DELETION_BEAT_LOCK,
@@ -55,14 +55,14 @@ def check_for_connector_deletion_task(
     try:
         # collect cc_pair_ids
         cc_pair_ids: list[int] = []
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             cc_pairs = get_connector_credential_pairs(db_session)
             for cc_pair in cc_pairs:
                 cc_pair_ids.append(cc_pair.id)
 
         # try running cleanup on the cc_pair_ids
         for cc_pair_id in cc_pair_ids:
-            with get_session_with_current_tenant(tenant_id) as db_session:
+            with get_session_with_current_tenant() as db_session:
                 redis_connector = RedisConnector(tenant_id, cc_pair_id)
                 try:
                     try_generate_document_cc_pair_cleanup_tasks(

@@ -124,8 +124,8 @@ def check_for_doc_permissions_sync(self: Task, *, tenant_id: str | None) -> bool
 
     # we need to use celery's redis client to access its redis data
     # (which lives on a different db number)
-    r = get_redis_client(tenant_id=tenant_id)
-    r_replica = get_redis_replica_client(tenant_id=tenant_id)
+    r = get_redis_client()
+    r_replica = get_redis_replica_client()
     r_celery: Redis = self.app.broker_connection().channel().client  # type: ignore
 
     lock_beat: RedisLock = r.lock(
@@ -140,7 +140,7 @@ def check_for_doc_permissions_sync(self: Task, *, tenant_id: str | None) -> bool
     try:
         # get all cc pairs that need to be synced
         cc_pair_ids_to_sync: list[int] = []
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             cc_pairs = get_all_auto_sync_cc_pairs(db_session)
 
             for cc_pair in cc_pairs:
@@ -228,7 +228,7 @@ def try_creating_permissions_sync_task(
 
         # create before setting fence to avoid race condition where the monitoring
         # task updates the sync record before it is created
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             insert_sync_record(
                 db_session=db_session,
                 entity_id=cc_pair_id,
@@ -299,7 +299,7 @@ def connector_permission_sync_generator_task(
 
     redis_connector = RedisConnector(tenant_id, cc_pair_id)
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     # this wait is needed to avoid a race condition where
     # the primary worker sends the task and it is immediately executed
@@ -352,7 +352,7 @@ def connector_permission_sync_generator_task(
         return None
 
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             cc_pair = get_connector_credential_pair_from_id(
                 db_session=db_session,
                 cc_pair_id=cc_pair_id,
@@ -447,7 +447,7 @@ def update_external_document_permissions_task(
     doc_id = document_external_access.doc_id
     external_access = document_external_access.external_access
     try:
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             # Add the users to the DB if they don't exist
             batch_add_ext_perm_user_if_not_exists(
                 db_session=db_session,

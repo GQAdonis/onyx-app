@@ -33,11 +33,11 @@ from onyx.redis.redis_connector_ext_group_sync import RedisConnectorExternalGrou
 from onyx.redis.redis_connector_prune import RedisConnectorPrune
 from onyx.redis.redis_document_set import RedisDocumentSet
 from onyx.redis.redis_pool import get_redis_client
+from onyx.redis.redis_pool import get_shared_redis_client
 from onyx.redis.redis_usergroup import RedisUserGroup
 from onyx.utils.logger import ColoredFormatter
 from onyx.utils.logger import PlainFormatter
 from onyx.utils.logger import setup_logger
-from shared_configs.configs import DEFAULT_REDIS_PREFIX
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import SENTRY_DSN
@@ -140,7 +140,7 @@ def on_task_postrun(
         f"{f'for tenant_id={tenant_id}' if tenant_id else ''}"
     )
 
-    r = get_redis_client(tenant_id=tenant_id)
+    r = get_redis_client()
 
     if task_id.startswith(RedisConnectorCredentialPair.PREFIX):
         r.srem(RedisConnectorCredentialPair.get_taskset_key(), task_id)
@@ -224,7 +224,7 @@ def wait_for_redis(sender: Any, **kwargs: Any) -> None:
     Will raise WorkerShutdown to kill the celery worker if the timeout
     is reached."""
 
-    r = get_redis_client(tenant_id=DEFAULT_REDIS_PREFIX)
+    r = get_shared_redis_client()
 
     WAIT_INTERVAL = 5
     WAIT_LIMIT = 60
@@ -310,7 +310,7 @@ def on_secondary_worker_init(sender: Any, **kwargs: Any) -> None:
     # Set up variables for waiting on primary worker
     WAIT_INTERVAL = 5
     WAIT_LIMIT = 60
-    r = get_redis_client(tenant_id=DEFAULT_REDIS_PREFIX)
+    r = get_shared_redis_client()
     time_start = time.monotonic()
 
     logger.info("Waiting for primary worker to be ready...")

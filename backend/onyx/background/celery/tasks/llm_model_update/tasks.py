@@ -75,7 +75,7 @@ def check_for_llm_model_update(self: Task, *, tenant_id: str | None) -> bool | N
         return None
 
     # Then update the database with the fetched models
-    with get_session_with_current_tenant(tenant_id) as db_session:
+    with get_session_with_current_tenant() as db_session:
         # Get the default LLM provider
         default_provider = (
             db_session.query(LLMProvider)

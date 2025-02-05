@@ -175,7 +175,7 @@ def _run_indexing(
     """
     start_time = time.time()
 
-    with get_session_with_current_tenant(tenant_id) as db_session_temp:
+    with get_session_with_current_tenant() as db_session_temp:
         index_attempt_start = get_index_attempt(db_session_temp, index_attempt_id)
         if not index_attempt_start:
             raise ValueError(
@@ -283,7 +283,7 @@ def _run_indexing(
                 datetime(1970, 1, 1, tzinfo=timezone.utc),
             )
 
-            with get_session_with_current_tenant(tenant_id) as db_session_temp:
+            with get_session_with_current_tenant() as db_session_temp:
                 index_attempt_loop_start = get_index_attempt(
                     db_session_temp, index_attempt_id
                 )
@@ -312,7 +312,7 @@ def _run_indexing(
                         raise ConnectorStopSignal("Connector stop signal detected")
 
                 # TODO: should we move this into the above callback instead?
-                with get_session_with_current_tenant(tenant_id) as db_session_temp:
+                with get_session_with_current_tenant() as db_session_temp:
                     cc_pair_loop = get_connector_credential_pair_from_id(
                         db_session_temp,
                         ctx.cc_pair_id,
@@ -385,7 +385,7 @@ def _run_indexing(
                 db_session.commit()
 
                 # This new value is updated every batch, so UI can refresh per batch update
-                with get_session_with_current_tenant(tenant_id) as db_session_temp:
+                with get_session_with_current_tenant() as db_session_temp:
                     update_docs_indexed(
                         db_session=db_session_temp,
                         index_attempt_id=index_attempt_id,
@@ -410,7 +410,7 @@ def _run_indexing(
 
             run_end_dt = window_end
             if ctx.is_primary:
-                with get_session_with_current_tenant(tenant_id) as db_session_temp:
+                with get_session_with_current_tenant() as db_session_temp:
                     update_connector_credential_pair(
                         db_session=db_session_temp,
                         connector_id=ctx.connector_id,
@@ -424,7 +424,7 @@ def _run_indexing(
             )
 
             if isinstance(e, ConnectorStopSignal):
-                with get_session_with_current_tenant(tenant_id) as db_session_temp:
+                with get_session_with_current_tenant() as db_session_temp:
                     mark_attempt_canceled(
                         index_attempt_id,
                         db_session_temp,
@@ -460,7 +460,7 @@ def _run_indexing(
                         and index_attempt_loop.status != IndexingStatus.IN_PROGRESS
                     )
                 ):
-                    with get_session_with_current_tenant(tenant_id) as db_session_temp:
+                    with get_session_with_current_tenant() as db_session_temp:
                         mark_attempt_failed(
                             index_attempt_id,
                             db_session_temp,
@@ -497,7 +497,7 @@ def _run_indexing(
         index_attempt_md.num_exceptions > 0
         and index_attempt_md.num_exceptions >= batch_num
     ):
-        with get_session_with_current_tenant(tenant_id) as db_session_temp:
+        with get_session_with_current_tenant() as db_session_temp:
             mark_attempt_failed(
                 index_attempt_id,
                 db_session_temp,
@@ -515,7 +515,7 @@ def _run_indexing(
 
     elapsed_time = time.time() - start_time
 
-    with get_session_with_current_tenant(tenant_id) as db_session_temp:
+    with get_session_with_current_tenant() as db_session_temp:
         if index_attempt_md.num_exceptions == 0:
             mark_attempt_succeeded(index_attempt_id, db_session_temp)
 
@@ -567,7 +567,7 @@ def run_indexing_entrypoint(
         TaskAttemptSingleton.set_cc_and_index_id(
             index_attempt_id, connector_credential_pair_id
         )
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             # TODO: remove long running session entirely
             attempt = transition_attempt_to_in_progress(index_attempt_id, db_session)
 
@@ -588,7 +588,7 @@ def run_indexing_entrypoint(
             f"credentials='{credential_id}'"
         )
 
-        with get_session_with_current_tenant(tenant_id) as db_session:
+        with get_session_with_current_tenant() as db_session:
             _run_indexing(db_session, index_attempt_id, tenant_id, callback)
 
         logger.info(
