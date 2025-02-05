@@ -261,7 +261,7 @@ def search_for_document(
     yql_query = (
         f'select * from sources {index_name} where document_id contains "{document_id}"'
     )
-    params = {"yql": yql_query}
+    params: dict[str, Any] = {"yql": yql_query}
     if max_hits is not None:
         params["hits"] = max_hits
     with get_vespa_http_client() as client:
@@ -571,6 +571,7 @@ class VespaDebugging:
         print(
             f"Number of chunks in Vespa: {len(docs)}, Number of chunks we think exist: {number_of_chunks_we_think_exist}"
         )
+        return len(docs), number_of_chunks_we_think_exist
 
     def search_documents(self, connector_id: int, query: str, n: int = 10) -> None:
         # Search documents for a tenant and connector.
