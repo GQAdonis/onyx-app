@@ -251,7 +251,7 @@ class SlackbotHandler:
         """
         all_tenants = get_all_tenant_ids()
 
-        token: Token[str]
+        token: Token[str | None]
 
         # 1) Try to acquire locks for new tenants
         for tenant_id in all_tenants:
@@ -774,7 +774,7 @@ def process_message(
         client=client.web_client, channel_id=channel
     )
 
-    token: Token[str] | None = None
+    token: Token[str | None] | None = None
     # Set the current tenant ID at the beginning for all DB calls within this thread
     if client.tenant_id:
         logger.info(f"Setting tenant ID to {client.tenant_id}")

@@ -95,6 +95,7 @@ from onyx.utils.variable_functionality import (
 from onyx.utils.variable_functionality import global_version
 from onyx.utils.variable_functionality import noop_fallback
 from shared_configs.configs import MULTI_TENANT
+from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -112,6 +113,9 @@ def check_for_vespa_sync_task(self: Task, *, tenant_id: str | None) -> bool | No
     """Runs periodically to check if any document needs syncing.
     Generates sets of tasks for Celery if syncing is needed."""
     time_start = time.monotonic()
+    print("IN THE VESPA SYCN TASK")
+    print("THIS IS THE TENANT ID", tenant_id)
+    print("THIS IS THE CONTEXT", CURRENT_TENANT_ID_CONTEXTVAR.get())
 
     r = get_redis_client(tenant_id=tenant_id)
 

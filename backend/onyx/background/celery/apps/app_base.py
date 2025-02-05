@@ -64,7 +64,10 @@ class TenantAwareTask(Task):
 
     abstract = True  # So Celery knows not to register this as a real task.
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        print("THIS IS BEING CALLLLLLLLEDDDD")
+        print("THIS IS THE ARGS", args)
+        print("THIS IS THE KWARGS", kwargs)
         # Grab tenant_id from the kwargs, or fallback to default if missing.
         tenant_id = kwargs.get("tenant_id", POSTGRES_DEFAULT_SCHEMA)
 
@@ -78,11 +81,6 @@ class TenantAwareTask(Task):
             # Clear or reset after the task runs
             # so it does not leak into any subsequent tasks on the same worker process
             CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA)
-
-    def run(self, *args, **kwargs):
-        if not kwargs.get("tenant_id"):
-            kwargs["tenant_id"] = POSTGRES_DEFAULT_SCHEMA
-        return super().run(*args, **kwargs)
 
 
 @task_prerun.connect
