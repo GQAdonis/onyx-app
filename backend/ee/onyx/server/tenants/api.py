@@ -36,7 +36,6 @@ from onyx.auth.users import User
 from onyx.configs.app_configs import WEB_DOMAIN
 from onyx.configs.constants import FASTAPI_USERS_AUTH_COOKIE_NAME
 from onyx.db.auth import get_user_count
-from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
 from onyx.db.engine import get_session_with_current_tenant
 from onyx.db.engine import get_session_with_shared_schema
@@ -48,6 +47,7 @@ from onyx.server.settings.store import load_settings
 from onyx.server.settings.store import store_settings
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
+from shared_configs.contextvars import get_current_tenant_id
 
 stripe.api_key = STRIPE_SECRET_KEY
 logger = setup_logger()
@@ -56,9 +56,10 @@ router = APIRouter(prefix="/tenants")
 
 @router.get("/anonymous-user-path")
 async def get_anonymous_user_path_api(
-    tenant_id: str | None = Depends(get_current_tenant_id),
     _: User | None = Depends(current_admin_user),
 ) -> AnonymousUserPath:
+    tenant_id = get_current_tenant_id()
+
     if tenant_id is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
@@ -71,9 +72,9 @@ async def get_anonymous_user_path_api(
 @router.post("/anonymous-user-path")
 async def set_anonymous_user_path_api(
     anonymous_user_path: str,
-    tenant_id: str = Depends(get_current_tenant_id),
     _: User | None = Depends(current_admin_user),
 ) -> None:
+    tenant_id = get_current_tenant_id()
     try:
         validate_anonymous_user_path(anonymous_user_path)
     except ValueError as e:
@@ -153,8 +154,8 @@ def gate_product(
 @router.get("/billing-information", response_model=BillingInformation)
 async def billing_information(
     _: User = Depends(current_admin_user),
-    tenant_id: str = Depends(get_current_tenant_id),
 ) -> BillingInformation:
+    tenant_id = get_current_tenant_id()
     logger.info("Fetching billing information")
     return BillingInformation(**fetch_billing_information(tenant_id))
 
@@ -162,8 +163,9 @@ async def billing_information(
 @router.post("/create-customer-portal-session")
 async def create_customer_portal_session(
     _: User = Depends(current_admin_user),
-    tenant_id: str = Depends(get_current_tenant_id),
 ) -> dict:
+    tenant_id = get_current_tenant_id()
+
     try:
         stripe_info = fetch_tenant_stripe_information(tenant_id)
         stripe_customer_id = stripe_info.get("stripe_customer_id")
@@ -213,8 +215,9 @@ async def leave_organization(
     user_email: UserByEmail,
     current_user: User | None = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str = Depends(get_current_tenant_id),
 ) -> None:
+    tenant_id = get_current_tenant_id()
+
     if current_user is None or current_user.email != user_email.user_email:
         raise HTTPException(
             status_code=403, detail="You can only leave the organization as yourself"

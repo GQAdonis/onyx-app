@@ -41,7 +41,6 @@ from onyx.configs.constants import AuthType
 from onyx.configs.constants import FASTAPI_USERS_AUTH_COOKIE_NAME
 from onyx.db.api_key import is_api_key_email_address
 from onyx.db.auth import get_total_users_count
-from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
 from onyx.db.models import AccessToken
 from onyx.db.models import User
@@ -67,6 +66,7 @@ from onyx.server.utils import BasicAuthenticationError
 from onyx.utils.logger import setup_logger
 from onyx.utils.variable_functionality import fetch_ee_implementation_or_noop
 from shared_configs.configs import MULTI_TENANT
+from shared_configs.contextvars import get_current_tenant_id
 
 logger = setup_logger()
 router = APIRouter()
@@ -261,10 +261,10 @@ def bulk_invite_users(
     emails: list[str] = Body(..., embed=True),
     current_user: User | None = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str = Depends(get_current_tenant_id),
 ) -> int:
     """emails are string validated. If any email fails validation, no emails are
     invited and an exception is raised."""
+    tenant_id = get_current_tenant_id()
 
     if current_user is None:
         raise HTTPException(
@@ -338,8 +338,8 @@ def remove_invited_user(
     user_email: UserByEmail,
     _: User | None = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str = Depends(get_current_tenant_id),
 ) -> int:
+    tenant_id = get_current_tenant_id()
     user_emails = get_invited_users()
     remaining_users = [user for user in user_emails if user != user_email.user_email]
 
@@ -529,8 +529,9 @@ def get_current_token_creation(
 def verify_user_logged_in(
     user: User | None = Depends(optional_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> UserInfo:
+    tenant_id = get_current_tenant_id()
+
     # NOTE: this does not use `current_user` / `current_admin_user` because we don't want
     # to enforce user verification here - the frontend always wants to get the info about
     # the current user regardless of if they are currently verified

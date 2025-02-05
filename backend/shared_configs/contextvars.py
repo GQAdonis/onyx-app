@@ -15,7 +15,7 @@ CURRENT_TENANT_ID_CONTEXTVAR: contextvars.ContextVar[
 """Utils related to contextvars"""
 
 
-def current_tenant_id() -> str:
+def get_current_tenant_id() -> str:
     tenant_id = CURRENT_TENANT_ID_CONTEXTVAR.get()
     if tenant_id is None:
         raise RuntimeError("Tenant ID is not set. This should never happen.")

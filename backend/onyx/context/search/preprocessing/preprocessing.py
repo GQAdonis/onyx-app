@@ -34,7 +34,7 @@ from onyx.utils.threadpool_concurrency import FunctionCall
 from onyx.utils.threadpool_concurrency import run_functions_in_parallel
 from onyx.utils.timing import log_function_time
 from shared_configs.configs import MULTI_TENANT
-from shared_configs.contextvars import current_tenant_id
+from shared_configs.contextvars import get_current_tenant_id
 
 
 logger = setup_logger()
@@ -166,7 +166,7 @@ def retrieval_preprocessing(
         time_cutoff=time_filter or predicted_time_cutoff,
         tags=preset_filters.tags,  # Tags are never auto-extracted
         access_control_list=user_acl_filters,
-        tenant_id=current_tenant_id() if MULTI_TENANT else None,
+        tenant_id=get_current_tenant_id() if MULTI_TENANT else None,
     )
 
     llm_evaluation_type = LLMEvaluationType.BASIC

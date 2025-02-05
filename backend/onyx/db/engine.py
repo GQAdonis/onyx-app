@@ -1,5 +1,4 @@
 import contextlib
-import json
 import os
 import re
 import ssl
@@ -16,7 +15,6 @@ from typing import ContextManager
 import asyncpg  # type: ignore
 import boto3
 from fastapi import HTTPException
-from fastapi import Request
 from sqlalchemy import event
 from sqlalchemy import text
 from sqlalchemy.engine import create_engine
@@ -42,14 +40,13 @@ from onyx.configs.app_configs import POSTGRES_PORT
 from onyx.configs.app_configs import POSTGRES_USER
 from onyx.configs.constants import POSTGRES_UNKNOWN_APP_NAME
 from onyx.configs.constants import SSL_CERT_FILE
-from onyx.redis.redis_pool import retrieve_auth_token_data_from_redis
 from onyx.server.utils import BasicAuthenticationError
 from onyx.utils.logger import setup_logger
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import TENANT_ID_PREFIX
-from shared_configs.contextvars import current_tenant_id
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
+from shared_configs.contextvars import get_current_tenant_id
 
 logger = setup_logger()
 
@@ -326,36 +323,6 @@ def get_sqlalchemy_async_engine() -> AsyncEngine:
     return _ASYNC_ENGINE
 
 
-async def get_current_tenant_id(request: Request) -> str:
-    if not MULTI_TENANT:
-        tenant_id = POSTGRES_DEFAULT_SCHEMA
-        return tenant_id
-
-    try:
-        # Look up token data in Redis
-        token_data = await retrieve_auth_token_data_from_redis(request)
-
-        if not token_data:
-            current_value = current_tenant_id()
-            logger.debug(
-                f"Token data not found or expired in Redis, defaulting to {current_value}"
-            )
-            return current_value
-
-        tenant_id = token_data.get("tenant_id", POSTGRES_DEFAULT_SCHEMA)
-
-        if not is_valid_schema_name(tenant_id):
-            raise HTTPException(status_code=400, detail="Invalid tenant ID format")
-
-        return tenant_id
-    except json.JSONDecodeError:
-        logger.error("Error decoding token data from Redis")
-        return POSTGRES_DEFAULT_SCHEMA
-    except Exception as e:
-        logger.error(f"Unexpected error in get_current_tenant_id: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
 # Listen for events on the synchronous Session class
 @event.listens_for(Session, "after_begin")
 def _set_search_path(
@@ -381,7 +348,7 @@ async def get_async_session_with_tenant(
     tenant_id: str | None = None,
 ) -> AsyncGenerator[AsyncSession, None]:
     if tenant_id is None:
-        tenant_id = current_tenant_id()
+        tenant_id = get_current_tenant_id()
 
     if not is_valid_schema_name(tenant_id):
         logger.error(f"Invalid tenant ID: {tenant_id}")
@@ -410,7 +377,7 @@ def get_session_with_current_tenant(
     | None = None,
 ) -> Generator[Session, None, None]:
     if tenant_id is None:
-        tenant_id = current_tenant_id()
+        tenant_id = get_current_tenant_id()
 
     with get_session_with_tenant(tenant_id) as session:
         yield session
@@ -466,20 +433,20 @@ def get_session_with_tenant(tenant_id: str) -> Generator[Session, None, None]:
 def set_search_path_on_checkout(
     dbapi_conn: Any, connection_record: Any, connection_proxy: Any
 ) -> None:
-    tenant_id = current_tenant_id()
+    tenant_id = get_current_tenant_id()
     if tenant_id and is_valid_schema_name(tenant_id):
         with dbapi_conn.cursor() as cursor:
             cursor.execute(f'SET search_path TO "{tenant_id}"')
 
 
 def get_session_generator_with_tenant() -> Generator[Session, None, None]:
-    tenant_id = current_tenant_id()
+    tenant_id = get_current_tenant_id()
     with get_session_with_current_tenant(tenant_id) as session:
         yield session
 
 
 def get_session() -> Generator[Session, None, None]:
-    tenant_id = current_tenant_id()
+    tenant_id = get_current_tenant_id()
     if tenant_id == POSTGRES_DEFAULT_SCHEMA and MULTI_TENANT:
         raise BasicAuthenticationError(detail="User must authenticate")
 
@@ -494,7 +461,7 @@ def get_session() -> Generator[Session, None, None]:
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    tenant_id = current_tenant_id()
+    tenant_id = get_current_tenant_id()
     engine = get_sqlalchemy_async_engine()
     async with AsyncSession(engine, expire_on_commit=False) as async_session:
         if MULTI_TENANT:

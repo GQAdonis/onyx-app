@@ -20,8 +20,8 @@ from shared_configs.configs import MULTI_TENANT
 logger = setup_logger()
 
 celery_app = Celery(__name__)
-celery_app.Task = app_base.TenantAwareTask  # type: ignore [misc]
 celery_app.config_from_object("onyx.background.celery.configs.indexing")
+celery_app.Task = app_base.TenantAwareTask  # type: ignore [misc]
 
 
 @signals.task_prerun.connect

@@ -32,7 +32,6 @@ from onyx.db.connector_credential_pair import (
 )
 from onyx.db.document import get_document_counts_for_cc_pairs
 from onyx.db.document import get_documents_for_cc_pair
-from onyx.db.engine import get_current_tenant_id
 from onyx.db.engine import get_session
 from onyx.db.enums import AccessType
 from onyx.db.enums import ConnectorCredentialPairStatus
@@ -56,6 +55,7 @@ from onyx.server.documents.models import PaginatedReturn
 from onyx.server.models import StatusResponse
 from onyx.utils.logger import setup_logger
 from onyx.utils.variable_functionality import fetch_ee_implementation_or_noop
+from shared_configs.contextvars import get_current_tenant_id
 
 logger = setup_logger()
 router = APIRouter(prefix="/manage")
@@ -100,8 +100,9 @@ def get_cc_pair_full_info(
     cc_pair_id: int,
     user: User | None = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> CCPairFullInfo:
+    tenant_id = get_current_tenant_id()
+
     cc_pair = get_connector_credential_pair_from_id_for_user(
         cc_pair_id, db_session, user, get_editable=False
     )
@@ -166,7 +167,6 @@ def update_cc_pair_status(
     status_update_request: CCStatusUpdateRequest,
     user: User | None = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> JSONResponse:
     """This method returns nearly immediately. It simply sets some signals and
     optimistically assumes any running background processes will clean themselves up.
@@ -174,6 +174,8 @@ def update_cc_pair_status(
 
     Returns HTTPStatus.OK if everything finished.
     """
+    tenant_id = get_current_tenant_id()
+
     cc_pair = get_connector_credential_pair_from_id_for_user(
         cc_pair_id=cc_pair_id,
         db_session=db_session,
@@ -327,9 +329,9 @@ def prune_cc_pair(
     cc_pair_id: int,
     user: User = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> StatusResponse[list[int]]:
     """Triggers pruning on a particular cc_pair immediately"""
+    tenant_id = get_current_tenant_id()
 
     cc_pair = get_connector_credential_pair_from_id_for_user(
         cc_pair_id=cc_pair_id,
@@ -399,9 +401,9 @@ def sync_cc_pair(
     cc_pair_id: int,
     user: User = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> StatusResponse[list[int]]:
     """Triggers permissions sync on a particular cc_pair immediately"""
+    tenant_id = get_current_tenant_id()
 
     cc_pair = get_connector_credential_pair_from_id_for_user(
         cc_pair_id=cc_pair_id,
@@ -473,9 +475,9 @@ def sync_cc_pair_groups(
     cc_pair_id: int,
     user: User = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
-    tenant_id: str | None = Depends(get_current_tenant_id),
 ) -> StatusResponse[list[int]]:
     """Triggers group sync on a particular cc_pair immediately"""
+    tenant_id = get_current_tenant_id()
 
     cc_pair = get_connector_credential_pair_from_id_for_user(
         cc_pair_id=cc_pair_id,

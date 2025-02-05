@@ -29,7 +29,7 @@ from onyx.configs.constants import FASTAPI_USERS_AUTH_COOKIE_NAME
 from onyx.configs.constants import REDIS_SOCKET_KEEPALIVE_OPTIONS
 from onyx.utils.logger import setup_logger
 from shared_configs.configs import DEFAULT_REDIS_PREFIX
-from shared_configs.contextvars import current_tenant_id
+from shared_configs.contextvars import get_current_tenant_id
 
 logger = setup_logger()
 
@@ -225,7 +225,7 @@ def get_redis_client(
     tenant_id: str | None = None,
 ) -> Redis:
     if tenant_id is None:
-        tenant_id = current_tenant_id()
+        tenant_id = get_current_tenant_id()
 
     return redis_pool.get_client(tenant_id)
 
@@ -236,7 +236,7 @@ def get_redis_replica_client(
     tenant_id: str | None = None,
 ) -> Redis:
     if tenant_id is None:
-        tenant_id = current_tenant_id()
+        tenant_id = get_current_tenant_id()
 
     return redis_pool.get_replica_client(tenant_id)
 
