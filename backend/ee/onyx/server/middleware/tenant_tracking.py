@@ -33,7 +33,7 @@ def add_tenant_id_middleware(app: FastAPI, logger: logging.LoggerAdapter) -> Non
             return await call_next(request)
 
         except Exception as e:
-            logger.error(f"Error in tenant ID middleware: {str(e)}")
+            logger.exception(f"Error in tenant ID middleware: {str(e)}")
             raise
 
 
@@ -83,6 +83,7 @@ async def _get_tenant_id_from_request(
             if tenant_id_from_payload is not None
             else POSTGRES_DEFAULT_SCHEMA
         )
+        print("tenant_id", tenant_id)
 
         if not is_valid_schema_name(tenant_id):
             raise HTTPException(status_code=400, detail="Invalid tenant ID format")
