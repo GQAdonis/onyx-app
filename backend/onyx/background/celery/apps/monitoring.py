@@ -19,6 +19,7 @@ from shared_configs.configs import MULTI_TENANT
 logger = setup_logger()
 
 celery_app = Celery(__name__)
+celery_app.Task = app_base.TenantAwareTask
 celery_app.config_from_object("onyx.background.celery.configs.monitoring")
 
 
