@@ -140,6 +140,7 @@ def check_for_doc_permissions_sync(self: Task, *, tenant_id: str | None) -> bool
     try:
         # get all cc pairs that need to be synced
         cc_pair_ids_to_sync: list[int] = []
+        print("TENANT ID IS ", tenant_id)
         with get_session_with_current_tenant() as db_session:
             cc_pairs = get_all_auto_sync_cc_pairs(db_session)
 

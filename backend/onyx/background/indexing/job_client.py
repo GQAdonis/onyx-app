@@ -59,16 +59,17 @@ def _initializer(
 
 
 def _run_in_process(func: Callable, args: tuple) -> None:
-    # We currently assume the last argument is always the tenant_id
-    tenant_id = args[-1]
-    valid_tenant = (
-        tenant_id
-        and isinstance(tenant_id, str)
-        and tenant_id.startswith(TENANT_ID_PREFIX)
+    tenant_id = next(
+        (
+            arg
+            for arg in reversed(args)
+            if isinstance(arg, str) and arg.startswith(TENANT_ID_PREFIX)
+        ),
+        None,
     )
-    CURRENT_TENANT_ID_CONTEXTVAR.set(
-        tenant_id if valid_tenant else POSTGRES_DEFAULT_SCHEMA
-    )
+
+    CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id or POSTGRES_DEFAULT_SCHEMA)
+
     func(*args)
 
 

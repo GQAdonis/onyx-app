@@ -105,17 +105,14 @@ class DynamicTenantScheduler(PersistentScheduler):
                 task_name = task["name"]
                 tenant_task_name = f"{task['name']}-{tenant_id}"
 
-                logger.debug(f"Creating task configuration for {tenant_task_name}")
                 tenant_task = {
                     "task": task["task"],
                     "schedule": task["schedule"],
                     "kwargs": {"tenant_id": tenant_id},
                 }
                 if options := task.get("options"):
-                    logger.debug(
-                        f"Adding options to task {tenant_task_name}: {options}"
-                    )
                     tenant_task["options"] = options
+
                 new_schedule[tenant_task_name] = tenant_task
 
         return new_schedule
@@ -153,11 +150,11 @@ class DynamicTenantScheduler(PersistentScheduler):
 
         new_schedule = self._generate_schedule(tenant_ids)
 
-        if DynamicTenantScheduler._compare_schedules(current_schedule, new_schedule):
-            logger.info(
-                "_try_updating_schedule: Current schedule is up to date, no changes needed"
-            )
-            return
+        # if DynamicTenantScheduler._compare_schedules(current_schedule, new_schedule):
+        #     logger.info(
+        #         "_try_updating_schedule: Current schedule is up to date, no changes needed"
+        #     )
+        #     return
 
         logger.info(
             "Schedule update required",

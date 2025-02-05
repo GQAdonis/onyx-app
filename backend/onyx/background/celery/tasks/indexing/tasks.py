@@ -56,6 +56,7 @@ from shared_configs.configs import INDEXING_MODEL_SERVER_HOST
 from shared_configs.configs import INDEXING_MODEL_SERVER_PORT
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import SENTRY_DSN
+from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 logger = setup_logger()
 
@@ -262,8 +263,9 @@ def connector_indexing_task(
     index_attempt_id: int,
     cc_pair_id: int,
     search_settings_id: int,
-    tenant_id: str | None,
     is_ee: bool,
+    *,
+    tenant_id: str | None,
 ) -> int | None:
     """Indexing task. For a cc pair, this task pulls all document IDs from the source
     and compares those IDs to locally stored documents and deletes all locally stored IDs missing
@@ -394,6 +396,8 @@ def connector_indexing_task(
     redis_connector_index.set_fence(payload)
 
     try:
+        print("IN THE CONNECTOR INDEXING TASK WITH TENNT ID", tenant_id)
+        print("THE ACTUAL TENANT ID IS ", CURRENT_TENANT_ID_CONTEXTVAR.get())
         with get_session_with_current_tenant() as db_session:
             attempt = get_index_attempt(db_session, index_attempt_id)
             if not attempt:
@@ -487,8 +491,8 @@ def connector_indexing_task_wrapper(
     index_attempt_id: int,
     cc_pair_id: int,
     search_settings_id: int,
-    tenant_id: str | None,
     is_ee: bool,
+    tenant_id: str | None,
 ) -> int | None:
     """Just wraps connector_indexing_task so we can log any exceptions before
     re-raising it."""
@@ -499,8 +503,8 @@ def connector_indexing_task_wrapper(
             index_attempt_id,
             cc_pair_id,
             search_settings_id,
-            tenant_id,
             is_ee,
+            tenant_id=tenant_id,
         )
     except Exception:
         logger.exception(
@@ -553,8 +557,8 @@ def connector_indexing_proxy_task(
         index_attempt_id,
         cc_pair_id,
         search_settings_id,
-        tenant_id,
         global_version.is_ee_version(),
+        tenant_id,  # NOTE: this must be the last argument
         pure=False,
     )
 
