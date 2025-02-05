@@ -28,7 +28,7 @@ from onyx.server.query_and_chat.token_limit import _user_is_rate_limited_by_glob
 from onyx.utils.threadpool_concurrency import run_functions_tuples_in_parallel
 
 
-def _check_token_rate_limits(user: User | None, tenant_id: str | None) -> None:
+def _check_token_rate_limits(user: User | None, tenant_id: str) -> None:
     if user is None:
         # Unauthenticated users are only rate limited by global settings
         _user_is_rate_limited_by_global(tenant_id)
@@ -52,7 +52,7 @@ User rate limits
 """
 
 
-def _user_is_rate_limited(user_id: UUID, tenant_id: str | None) -> None:
+def _user_is_rate_limited(user_id: UUID, tenant_id: str) -> None:
     with get_session_with_current_tenant(tenant_id) as db_session:
         user_rate_limits = fetch_all_user_token_rate_limits(
             db_session=db_session, enabled_only=True, ordered=False

@@ -67,8 +67,6 @@ class TenantAwareTask(Task):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         # Grab tenant_id from the kwargs, or fallback to default if missing.
         tenant_id = kwargs.get("tenant_id", None) or POSTGRES_DEFAULT_SCHEMA
-        print("TENANT IS ", tenant_id)
-        print("KWARGS ARE ", kwargs)
 
         # Set the context var
         CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)

@@ -267,6 +267,10 @@ def connector_indexing_task(
     *,
     tenant_id: str | None,
 ) -> int | None:
+    if not tenant_id:
+        logger.error("Tenant ID is required")
+        print("TENANT ID IS REQUIRED")
+        raise ValueError("Tenant ID is required")
     """Indexing task. For a cc pair, this task pulls all document IDs from the source
     and compares those IDs to locally stored documents and deletes all locally stored IDs missing
     from the most recently pulled document ID list

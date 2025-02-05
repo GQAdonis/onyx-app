@@ -803,7 +803,7 @@ def monitor_ccpair_indexing_taskset(
     soft_time_limit=300,
     bind=True,
 )
-def monitor_vespa_sync(self: Task, tenant_id: str | None) -> bool | None:
+def monitor_vespa_sync(self: Task, *, tenant_id: str | None) -> bool | None:
     """This is a celery beat task that monitors and finalizes various long running tasks.
 
     The name monitor_vespa_sync is a bit of a misnomer since it checks many different tasks

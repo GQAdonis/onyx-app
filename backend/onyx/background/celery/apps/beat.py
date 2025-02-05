@@ -155,6 +155,8 @@ class DynamicTenantScheduler(PersistentScheduler):
         #         "_try_updating_schedule: Current schedule is up to date, no changes needed"
         #     )
         #     return
+        print("NEW SCHEDULE IS ")
+        print(new_schedule)
 
         logger.info(
             "Schedule update required",
