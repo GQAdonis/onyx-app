@@ -94,7 +94,7 @@ jobs:
           cd deployment/docker_compose
           ENABLE_PAID_ENTERPRISE_EDITION_FEATURES=true \
           MULTI_TENANT=true \
-          AUTH_TYPE=basic \
+          AUTH_TYPE=cloud \
           REQUIRE_EMAIL_VERIFICATION=false \
           DISABLE_TELEMETRY=true \
           IMAGE_TAG=test \
