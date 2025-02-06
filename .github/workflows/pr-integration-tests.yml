@@ -126,11 +126,11 @@ jobs:
 
       - name: Check multi-tenant test results
         run: |
-          if [ ${{ steps.run_tests.outcome }} == 'failure' ]; then
-            echo "Integration tests failed. Exiting with error."
+          if [ ${{ steps.run_multitenant_tests.outcome }} == 'failure' ]; then
+            echo "Multi-tenant integration tests failed. Exiting with error."
             exit 1
           else
-            echo "All integration tests passed successfully."
+            echo "All multi-tenant integration tests passed successfully."
           fi
 
       - name: Stop multi-tenant Docker containers
