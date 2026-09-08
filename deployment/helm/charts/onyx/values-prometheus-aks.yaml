@@ -1,0 +1,132 @@
+# Onyx on the `main` AKS cluster, exposed at https://onyx.prometheusags.ai
+# via Envoy Gateway (see ../../gateway/) rather than the chart's nginx Ingress.
+#
+# Credentials are NOT in this file. They live in pre-created Secrets in the
+# `onyx` namespace and are referenced through auth.*.existingSecret.
+
+# --- Routing -----------------------------------------------------------------
+# The chart's Ingress templates are nginx-specific (rewrite-target, proxy-body-size)
+# and it ships no Gateway API templates. Envoy Gateway resources are applied
+# separately; both of these stay off.
+ingress:
+  enabled: false
+
+nginx:
+  enabled: false
+
+letsencrypt:
+  enabled: false
+
+# --- Storage -----------------------------------------------------------------
+# managed-csi-premium is WaitForFirstConsumer + Delete. Deleting the PVCs
+# destroys the data; managed-premium-immediate is the Retain equivalent.
+persistent:
+  storageClassName: managed-csi-premium
+
+# --- Postgres (CloudNativePG, in-cluster, HA) --------------------------------
+postgresql:
+  enabled: true
+  nameOverride: cloudnative-pg
+  crds:
+    create: false
+  cluster:
+    instances: 3
+    storage:
+      storageClass: managed-csi-premium
+      size: 100Gi
+    enableSuperuserAccess: true
+    superuserSecret:
+      name: onyx-postgresql
+    # NOTE: templates/postgres-cluster.yaml only reads instances, storage,
+    # enableSuperuserAccess, superuserSecret and resources. An `affinity` or
+    # `nodeSelector` key here is silently ignored, so Postgres is left to
+    # schedule freely. CNPG spreads its 3 instances across nodes on its own.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+# --- OpenSearch (vector + keyword search) ------------------------------------
+opensearch:
+  enabled: true
+  singleNode: true
+  clusterName: "onyx-opensearch"
+  nodeGroup: "master"
+  masterService: "onyx-opensearch-master"
+  replicas: 1
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  persistence:
+    enabled: true
+    size: 64Gi
+    storageClass: managed-csi-premium
+  opensearchJavaOpts: "-Xmx4g -Xms4g"
+  # agentpool nodes have ~26Gi free; userpool nodes are 45-67% used.
+  nodeSelector:
+    agentpool: agentpool
+
+vectorDB:
+  enabled: true
+
+# --- Redis -------------------------------------------------------------------
+redis:
+  enabled: true
+
+# --- Object storage ----------------------------------------------------------
+minio:
+  enabled: true
+  existingSecret: onyx-objectstorage
+  persistence:
+    enabled: true
+    size: 30Gi
+    storageClass: managed-csi-premium
+
+# --- Onyx MCP server ---------------------------------------------------------
+mcpServer:
+  enabled: true
+
+# --- Code interpreter sandbox ------------------------------------------------
+codeInterpreter:
+  enabled: true
+
+# --- Bots (not requested) ----------------------------------------------------
+slackbot:
+  enabled: false
+
+discordbot:
+  enabled: false
+
+# --- Credentials: reference pre-created Secrets ------------------------------
+auth:
+  postgresql:
+    enabled: true
+    existingSecret: onyx-postgresql
+  redis:
+    enabled: true
+    existingSecret: onyx-redis
+  objectstorage:
+    enabled: true
+    existingSecret: onyx-objectstorage
+  # The opensearch subchart's extraEnvs references the secret `onyx-opensearch`
+  # by literal name for OPENSEARCH_INITIAL_ADMIN_PASSWORD, so that name is fixed.
+  opensearch:
+    enabled: true
+    existingSecret: onyx-opensearch
+  # Signs password-reset / verification tokens and OAuth/OIDC state. Off by
+  # default in the chart for upgrade compatibility; required for a public login.
+  userauth:
+    enabled: true
+    existingSecret: onyx-userauth
+
+# --- Application config ------------------------------------------------------
+configMap:
+  WEB_DOMAIN: "https://onyx.prometheusags.ai"
+  DOMAIN: "onyx.prometheusags.ai"
