@@ -4,6 +4,25 @@
 # Credentials are NOT in this file. They live in pre-created Secrets in the
 # `onyx` namespace and are referenced through auth.*.existingSecret.
 
+# --- Image versions ----------------------------------------------------------
+# Pinned to a release tag, not `latest`. `latest` is a moving Docker Hub tag, so
+# a pod restart could silently land on a different build than the one tested
+# here, and there is no tag to roll back to. v4.7.1 is the digest `latest`
+# pointed at on 2026-09-08.
+#
+# `global.version` covers every Onyx-published image (api, webserver, celery
+# workers, mcp server, both model servers). Bump this one value to upgrade.
+global:
+  version: "v4.7.1"
+
+# The code-interpreter sandbox ships on its own release line, so global.version
+# does NOT cover it; the subchart defaults its image tag to `latest`. Upstream
+# pins it (see docker-compose, #14553) and Chart.yaml already pins the subchart
+# to 0.4.6, so the image is pinned to match.
+code-interpreter:
+  image:
+    tag: "0.4.6"
+
 # --- Routing -----------------------------------------------------------------
 # The chart's Ingress templates are nginx-specific (rewrite-target, proxy-body-size)
 # and it ships no Gateway API templates. Envoy Gateway resources are applied
@@ -24,6 +43,15 @@ persistent:
   storageClassName: managed-csi-premium
 
 # --- Postgres (CloudNativePG, in-cluster, HA) --------------------------------
+# The CNPG operator is installed as its OWN Helm release (`cnpg-operator`, with
+# fullnameOverride: onyx-cloudnative-pg), so this chart must not try to own the
+# operator's resources too. Without this flag the upgrade fails with
+# "invalid ownership metadata" on ServiceAccount onyx-cloudnative-pg.
+# `postgresql.enabled` stays true: it still gates the Postgres Cluster CR and
+# the auth wiring, which this chart does own.
+postgresqlOperator:
+  enabled: false
+
 postgresql:
   enabled: true
   nameOverride: cloudnative-pg
