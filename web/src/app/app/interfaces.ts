@@ -207,6 +207,10 @@ export interface BackendChatSession {
   current_run?: { run_id: number } | null;
   // True for sessions pinned to an incognito record mode.
   incognito?: boolean;
+  // The conversation's own document-set scope, by id. Empty means the session
+  // carries no scope of its own and retrieval falls back to the assistant's
+  // sets. Ids are the storage currency; the picker works in names.
+  document_set_ids?: number[];
 }
 
 export function toChatSession(backend: BackendChatSession): ChatSession {

@@ -81,6 +81,9 @@
       },
       "projectSearch": {
         "label": "Project Search"
+      },
+      "selectDocumentSets": {
+        "label": "Choose knowledge to search"
       }
     },
     "addMcpModal": {

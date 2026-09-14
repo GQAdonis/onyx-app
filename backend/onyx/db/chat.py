@@ -13,18 +13,23 @@ from onyx.configs.chat_configs import HARD_DELETE_CHATS
 from onyx.configs.constants import MessageType
 from onyx.context.search.models import InferenceSection, SavedSearchDoc
 from onyx.context.search.models import SearchDoc as ServerSearchDoc
+from onyx.db.document_set import filter_document_set_ids_by_user_access
 from onyx.db.enums import IncognitoRecordMode, record_mode_persists_content
 from onyx.db.models import (
     ChatMessage,
     ChatMessage__SearchDoc,
     ChatSession,
+    ChatSession__DocumentSet,
     ChatSessionSharedStatus,
+    DocumentSet,
     Persona,
     ToolCall,
     User,
 )
 from onyx.db.models import SearchDoc as DBSearchDoc
 from onyx.db.persona import get_best_persona_id_for_user
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
 from onyx.file_store.models import FileDescriptor
 from onyx.llm.override_models import LLMOverride, PromptOverride
@@ -324,6 +329,8 @@ def update_chat_session(
     chat_session_id: UUID,
     description: str | None = None,
     sharing_status: ChatSessionSharedStatus | None = None,
+    document_set_ids: list[int] | None = None,
+    user: User | None = None,
 ) -> ChatSession:
     chat_session = get_chat_session_by_id(
         chat_session_id=chat_session_id, user_id=user_id, db_session=db_session
@@ -342,9 +349,98 @@ def update_chat_session(
     if sharing_status is not None:
         chat_session.shared_status = sharing_status
 
+    # None leaves the stored scope alone; an empty list deliberately clears it,
+    # which is why this is not a truthiness check.
+    if document_set_ids is not None:
+        set_chat_session_document_set_ids(
+            db_session=db_session,
+            chat_session_id=chat_session_id,
+            document_set_ids=document_set_ids,
+            user=user,
+        )
+
     db_session.commit()
 
     return chat_session
+
+
+def get_chat_session_document_set_ids(
+    db_session: Session, chat_session_id: UUID
+) -> list[int]:
+    """The conversation's own document-set scope, by ID.
+
+    Empty means the session carries no scope and retrieval falls back to the
+    assistant's document sets.
+    """
+    return list(
+        db_session.scalars(
+            select(ChatSession__DocumentSet.document_set_id)
+            .where(ChatSession__DocumentSet.chat_session_id == chat_session_id)
+            .order_by(ChatSession__DocumentSet.document_set_id)
+        ).all()
+    )
+
+
+def get_chat_session_document_set_names(
+    db_session: Session, chat_session_id: UUID
+) -> list[str]:
+    """The session scope as NAMES, which is what the index stores and what
+    `BaseFilters.document_set` carries. IDs are the storage currency; names are
+    the wire and retrieval currency — the same split persona scope uses.
+    """
+    return list(
+        db_session.scalars(
+            select(DocumentSet.name)
+            .join(
+                ChatSession__DocumentSet,
+                ChatSession__DocumentSet.document_set_id == DocumentSet.id,
+            )
+            .where(ChatSession__DocumentSet.chat_session_id == chat_session_id)
+            .order_by(DocumentSet.name)
+        ).all()
+    )
+
+
+def set_chat_session_document_set_ids(
+    db_session: Session,
+    chat_session_id: UUID,
+    document_set_ids: list[int],
+    user: User | None,
+) -> None:
+    """Replace the conversation's document-set scope.
+
+    Access is checked HERE, on the write, by ID. Storing an id the user cannot
+    reach would let the retrieval path later resolve it to a name and search it,
+    so an unreachable id is rejected rather than silently dropped.
+    """
+    requested = set(document_set_ids)
+    if requested and user is not None:
+        accessible = set(
+            filter_document_set_ids_by_user_access(
+                db_session=db_session,
+                document_set_ids=list(requested),
+                user=user,
+            )
+        )
+        unauthorized = sorted(requested - accessible)
+        if unauthorized:
+            raise OnyxError(
+                OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+                f"User does not have access to document sets: {unauthorized}",
+            )
+
+    db_session.execute(
+        delete(ChatSession__DocumentSet).where(
+            ChatSession__DocumentSet.chat_session_id == chat_session_id
+        )
+    )
+    for document_set_id in sorted(requested):
+        db_session.add(
+            ChatSession__DocumentSet(
+                chat_session_id=chat_session_id,
+                document_set_id=document_set_id,
+            )
+        )
 
 
 def delete_all_chat_sessions_for_user(

@@ -70,6 +70,7 @@ from onyx.db.chat import (
     get_chat_message,
     get_chat_messages_by_session,
     get_chat_session_by_id,
+    get_chat_session_document_set_ids,
     get_chat_sessions_by_user,
     get_incognito_session_ids_for_user,
     set_as_latest_chat_message,
@@ -456,6 +457,10 @@ def get_chat_session(
         packets=replay_packet_lists,
         current_run=current_run,
         incognito=chat_session.incognito_record_mode is not None,
+        # Lets a reload restore the document-set picker selection.
+        document_set_ids=get_chat_session_document_set_ids(
+            db_session=db_session, chat_session_id=session_id
+        ),
     )
 
 
@@ -626,6 +631,9 @@ def patch_chat_session(
         user_id=user_id,
         chat_session_id=session_id,
         sharing_status=chat_session_update_req.sharing_status,
+        document_set_ids=chat_session_update_req.document_set_ids,
+        # Passed so the document-set scope is access-checked by ID on write.
+        user=user,
     )
     return None
 

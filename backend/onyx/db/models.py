@@ -676,6 +676,29 @@ class Persona__DocumentSet(Base):
     )
 
 
+class ChatSession__DocumentSet(Base):
+    """A conversation-level document-set scope.
+
+    Distinct from Persona__DocumentSet: that is the assistant's configured
+    knowledge, this is what one conversation was pointed at. A session scope
+    takes precedence over the persona's (and is itself overridden by filters
+    sent on an individual message), so it widens or narrows within the user's
+    own access rather than within the assistant's.
+
+    Rows are keyed by document_set id; callers convert to names at read time,
+    because the vector index stores document set NAMES.
+    """
+
+    __tablename__ = "chat_session__document_set"
+
+    chat_session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("chat_session.id", ondelete="CASCADE"), primary_key=True
+    )
+    document_set_id: Mapped[int] = mapped_column(
+        ForeignKey("document_set.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class User__PinnedPersona(Base):
     """An agent a user has pinned to their sidebar, and where it sits.
 
