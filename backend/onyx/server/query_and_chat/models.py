@@ -178,7 +178,10 @@ class ChatRenameRequest(BaseModel):
 
 
 class ChatSessionUpdateRequest(BaseModel):
-    sharing_status: ChatSessionSharedStatus
+    sharing_status: ChatSessionSharedStatus | None = None
+    # Conversation-level document-set scope, by ID. None leaves the stored scope
+    # untouched; an empty list clears it and falls back to the assistant's sets.
+    document_set_ids: list[int] | None = None
 
 
 class DeleteAllSessionsRequest(BaseModel):
@@ -285,6 +288,10 @@ class ChatSessionDetailResponse(BaseModel):
     # True for sessions pinned to an incognito record mode, so a reload can
     # restore the incognito UI state.
     incognito: bool = False
+    # Conversation-level document-set scope, by ID, so a reload can restore the
+    # picker selection. Empty means the session carries no scope of its own and
+    # retrieval falls back to the assistant's document sets.
+    document_set_ids: list[int] = []
 
 
 class AdminSearchRequest(BaseModel):

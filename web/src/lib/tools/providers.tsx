@@ -29,6 +29,8 @@ interface ToolsPopoverInputs {
   toolConfiguration: ToolConfigurationHandle;
   /** Drills the popover into its sources sub-view. */
   openSources: () => void;
+  /** Drills the popover into its document-sets sub-view. */
+  openDocumentSets: () => void;
   /** Dismisses the popover. */
   close: () => void;
 }
@@ -71,6 +73,7 @@ function useToolsPopoverState({
   agent,
   toolConfiguration,
   openSources,
+  openDocumentSets,
   close,
 }: ToolsPopoverInputs): ToolsPopoverValue {
   const { availableSources, settled } = useAvailableSources();
@@ -150,6 +153,7 @@ function useToolsPopoverState({
       agent,
       toolConfiguration,
       openSources,
+      openDocumentSets,
       close,
       configuredSources,
       sourceCounts: {
@@ -172,6 +176,7 @@ function useToolsPopoverState({
       enabledSourceCount,
       isSourceEnabled,
       openSources,
+      openDocumentSets,
       toggleEnabled,
       toggleForced,
       toggleSource,

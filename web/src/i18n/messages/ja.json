@@ -84,6 +84,9 @@
       },
       "selectSearchSources": {
         "label": "検索ソースを選択"
+      },
+      "selectDocumentSets": {
+        "label": "検索するナレッジを選択"
       }
     },
     "addMcpModal": {
