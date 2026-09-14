@@ -67,3 +67,13 @@ plans
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 !.claude/settings.json
+
+# Local AI-tooling state (KBD orchestrator, OpenSpec, per-tool skill trees).
+# Created by `openspec init` and the KBD process skills; machine-local, not
+# project source.
+.kbd-orchestrator/
+openspec/
+.agents/
+.kimi-code/
+.opencode/
+.prometheus/
