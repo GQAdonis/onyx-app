@@ -70,6 +70,7 @@ from onyx.db.chat import (
     get_chat_message,
     get_chat_messages_by_session,
     get_chat_session_by_id,
+    get_chat_session_document_set_ids,
     get_chat_sessions_by_user,
     get_incognito_session_ids_for_user,
     set_as_latest_chat_message,
@@ -93,6 +94,10 @@ from onyx.db.user_file import get_file_id_by_user_file_id
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import get_default_file_store
+from onyx.file_store.serving import (
+    RESPONSE_POLICY_VERSION,
+    resolve_inline_disposition,
+)
 from onyx.llm.constants import LlmProviderNames
 from onyx.llm.factory import get_llm_for_persona, get_llm_token_counter
 from onyx.llm.models import (
@@ -456,6 +461,10 @@ def get_chat_session(
         packets=replay_packet_lists,
         current_run=current_run,
         incognito=chat_session.incognito_record_mode is not None,
+        # Lets a reload restore the document-set picker selection.
+        document_set_ids=get_chat_session_document_set_ids(
+            db_session=db_session, chat_session_id=session_id
+        ),
     )
 
 
@@ -626,6 +635,9 @@ def patch_chat_session(
         user_id=user_id,
         chat_session_id=session_id,
         sharing_status=chat_session_update_req.sharing_status,
+        document_set_ids=chat_session_update_req.document_set_ids,
+        # Passed so the document-set scope is access-checked by ID on write.
+        user=user,
     )
     return None
 
@@ -1162,18 +1174,25 @@ def fetch_chat_file(
     if not file_record:
         raise HTTPException(status_code=404, detail="File not found")
 
-    media_type = file_record.file_type
     # `parsed` only changes behavior for spreadsheet files (xlsx is a binary zip
     # the frontend cannot render); everything else is served raw as usual.
-    parse_spreadsheet = parsed and is_spreadsheet_mime_type(media_type)
+    parse_spreadsheet = parsed and is_spreadsheet_mime_type(file_record.file_type)
+
+    media_type, security_headers = resolve_inline_disposition(
+        file_record.file_type,
+        # A parsed spreadsheet is served as a JSON preview, not as the stored bytes.
+        fallback_disposition=None if parse_spreadsheet else "attachment",
+    )
 
     # Files served here are immutable (content-addressed by file_id), so allow long-lived caching.
     # Use `private` because this is behind auth / tenant scoping.
-    etag = f'"{file_id}-parsed"' if parse_spreadsheet else f'"{file_id}"'
-    cache_headers = {
+    etag_variant: str = "-parsed" if parse_spreadsheet else ""
+    etag: str = f'"{file_id}{etag_variant}-{RESPONSE_POLICY_VERSION}"'
+    cache_headers: dict[str, str] = {
         "Cache-Control": "private, max-age=31536000, immutable",
         "ETag": etag,
         "Vary": "Cookie",
+        **security_headers,
     }
 
     if request.headers.get("if-none-match") == etag:

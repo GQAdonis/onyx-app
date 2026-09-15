@@ -27,6 +27,7 @@ import {
 } from "@/lib/tools/hooks";
 import { ToolsPopoverProvider } from "@/lib/tools/providers";
 import MCPLineItem, { MCPServer } from "@/lib/tools/components/MCPLineItem";
+import DocumentSetsView from "@/lib/tools/components/DocumentSetsView";
 import SourcesView from "@/lib/tools/components/SourcesView";
 import SwitchList, { SwitchListItem } from "@/lib/tools/components/SwitchList";
 import ToolLineItem from "@/lib/tools/components/ToolLineItem";
@@ -119,6 +120,10 @@ export default function ToolsPopover({
     () => setSecondaryView({ type: "sources" }),
     []
   );
+  const openDocumentSets = useCallback(
+    () => setSecondaryView({ type: "documentSets" }),
+    []
+  );
 
   // Filter out MCP tools from the main list (they have mcp_server_id)
   // Also filter out internal search tool for basic users when there are no connectors
@@ -181,9 +186,9 @@ export default function ToolsPopover({
           setMcpServers(servers);
           // Seed auth/loading state based on response
           setMcpServerData((prev) => {
-            const next = { ...prev } as any;
-            servers.forEach((s: any) => {
-              next[s.id as number] = {
+            const next: typeof prev = { ...prev };
+            servers.forEach((s: MCPServer) => {
+              next[s.id] = {
                 isAuthenticated: !!s.user_can_authenticate,
                 isLoading: false,
               };
@@ -504,6 +509,7 @@ export default function ToolsPopover({
       agent={agent}
       toolConfiguration={toolConfiguration}
       openSources={openSources}
+      openDocumentSets={openDocumentSets}
       close={close}
     >
       <Popover open={open} onOpenChange={handleOpenChange}>
@@ -523,6 +529,8 @@ export default function ToolsPopover({
             {secondaryView ? (
               secondaryView.type === "mcp" ? (
                 mcpView
+              ) : secondaryView.type === "documentSets" ? (
+                <DocumentSetsView onBack={() => setSecondaryView(null)} />
               ) : (
                 <SourcesView onBack={() => setSecondaryView(null)} />
               )

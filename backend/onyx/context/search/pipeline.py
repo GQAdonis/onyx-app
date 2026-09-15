@@ -89,6 +89,23 @@ def _build_index_filters(
         else persona_document_sets
     )
 
+    # Log the resolved scope AND which input won. The merge above erases the
+    # branch, so without this a search scoped by the caller is indistinguishable
+    # in the logs from one scoped by the persona — and an unscoped search is
+    # invisible entirely. A source-type scope (logged separately in SearchTool)
+    # is a different axis and has been misread as this one.
+    if base_filters.document_set is not None:
+        _scope_provenance = "request"
+    elif persona_document_sets:
+        _scope_provenance = "persona"
+    else:
+        _scope_provenance = "none"
+    logger.info(
+        "document set scope: %s (provenance: %s)",
+        document_set_filter if document_set_filter else [],
+        _scope_provenance,
+    )
+
     # The persona's search_start_date floor must never be loosened.
     updated_at_range = base_filters.updated_at_range
     floor_starts = [

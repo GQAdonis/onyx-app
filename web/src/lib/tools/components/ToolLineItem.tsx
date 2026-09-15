@@ -40,7 +40,8 @@ type ToolAction =
   | { kind: "authenticate"; authStatus: ToolAuthStatus }
   | { kind: "toggle"; count: { enabled: number; total: number } | null }
   | { kind: "configure"; href: string; tooltip: string }
-  | { kind: "selectSources" };
+  | { kind: "selectSources" }
+  | { kind: "selectDocumentSets" };
 
 export interface ToolLineItemProps {
   tool: ToolSnapshot;
@@ -65,6 +66,7 @@ export default function ToolLineItem({ tool }: ToolLineItemProps) {
     toggleForced,
     toggleEnabled,
     openSources,
+    openDocumentSets,
     close,
   } = useToolsPopover();
   const { permissions } = useUser();
@@ -154,6 +156,7 @@ export default function ToolLineItem({ tool }: ToolLineItemProps) {
   const connectorsLabel = needsConnectors
     ? t("actionLineItem.addConnectors.label")
     : t("actionLineItem.configureConnectors.label");
+  const documentSetsLabel = t("actionLineItem.selectDocumentSets.label");
 
   function handleClick() {
     if (isUnavailable) {
@@ -202,6 +205,11 @@ export default function ToolLineItem({ tool }: ToolLineItemProps) {
     rightActions.push({ kind: "configure", ...adminConfigure });
   } else if (ownsSources) {
     rightActions.push({ kind: "selectSources" });
+    // Sources and document sets are orthogonal axes of the same question —
+    // what this search covers — so the tool that owns one owns both. They
+    // AND together at retrieval: a document set holding no GitHub documents
+    // returns nothing while scoped to GitHub, with both filters applied.
+    rightActions.push({ kind: "selectDocumentSets" });
   }
 
   function renderRightAction(action: ToolAction) {
@@ -268,6 +276,22 @@ export default function ToolLineItem({ tool }: ToolLineItemProps) {
               if (needsConnectors) router.push("/admin/add-connector");
               else openSources();
             }}
+          />
+        );
+      case "selectDocumentSets":
+        // Deliberately "choose which knowledge to search", not "filter this
+        // assistant": a selection here REPLACES the assistant's configured
+        // document sets for this conversation rather than narrowing within
+        // them, so it can reach knowledge the assistant was not given —
+        // bounded by the user's own access, re-checked server-side.
+        return (
+          <Button
+            icon={SvgChevronRight}
+            prominence="tertiary"
+            size="sm"
+            aria-label={documentSetsLabel}
+            tooltip={documentSetsLabel}
+            onClick={openDocumentSets}
           />
         );
     }

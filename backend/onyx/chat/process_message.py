@@ -82,6 +82,7 @@ from onyx.context.search.models import BaseFilters, SearchDoc
 from onyx.db.chat import (
     create_new_chat_message,
     get_chat_session_by_id,
+    get_chat_session_document_set_names,
     get_or_create_root_message,
     reserve_message_id,
     reserve_multi_model_message_ids,
@@ -930,6 +931,12 @@ def build_chat_turn(
     ):
         forced_tool_id = None
 
+    # construct_tools skips disabled tools, and a forced id it did not build fails
+    # the whole message. Callers name the forced tool from the persona's attached
+    # tools, which stay attached when an admin disables one.
+    if forced_tool_id in {tool.id for tool in all_tools if not tool.enabled}:
+        forced_tool_id = None
+
     # TODO(nmgarza5): Once summarization is done, we don't need to load all files from the beginning.
     # Load all files needed for this chat chain into memory.
     files = load_all_chat_files(chat_history, db_session)
@@ -1328,13 +1335,26 @@ def _run_models(
             # Do NOT pass a long-lived session here — it would hold a
             # connection for the entire LLM loop (minutes), and cloud
             # infrastructure may drop idle connections.
+            # Fold the conversation's stored document-set scope into the request
+            # filters. Precedence is request > session > persona: filters sent
+            # with this message win outright, the session's scope fills in only
+            # when the message carries none, and an absent session scope leaves
+            # the persona fallback in _build_index_filters untouched.
+            #
+            # Done here, upstream of _build_index_filters, so that function's
+            # two-tier merge semantics stay exactly as they are.
+            effective_search_filters = _with_session_document_set_scope(
+                new_msg_req_filters=setup.new_msg_req.internal_search_filters,
+                chat_session_id=setup.chat_session_id,
+            )
+
             thread_tool_dict = construct_tools(
                 persona=setup.persona,
                 emitter=model_emitter,
                 user=user,
                 llm=model_llm,
                 search_tool_config=SearchToolConfig(
-                    user_selected_filters=setup.new_msg_req.internal_search_filters,
+                    user_selected_filters=effective_search_filters,
                     project_id_filter=setup.search_params.project_id_filter,
                     persona_id_filter=setup.search_params.persona_id_filter,
                     bypass_acl=setup.bypass_acl,
@@ -1385,6 +1405,7 @@ def _run_models(
                     user_identity=setup.user_identity,
                     chat_session_id=str(setup.chat_session_id),
                     all_injected_file_metadata=setup.all_injected_file_metadata,
+                    user_language=setup.user_memory_context.user_info.language,
                 )
             else:
                 run_llm_loop(
@@ -1631,6 +1652,38 @@ def _run_models(
                 )
 
     return _read_stream()
+
+
+def _with_session_document_set_scope(
+    new_msg_req_filters: BaseFilters | None,
+    chat_session_id: UUID,
+) -> BaseFilters | None:
+    """Fold the conversation's stored document-set scope into the request filters.
+
+    Precedence is request > session > persona. Filters sent with this message
+    win outright; the session's scope fills in only when the message carries
+    none; an absent session scope returns the request filters untouched so the
+    persona fallback inside ``_build_index_filters`` still applies.
+
+    Session-sourced names were access-checked by id when they were stored, and
+    are checked again by name on the retrieval path — this function never
+    bypasses ``filter_document_set_names_by_user_access``.
+    """
+    if new_msg_req_filters is not None and new_msg_req_filters.document_set is not None:
+        return new_msg_req_filters
+
+    # Short-lived session: the caller's comment warns against holding a
+    # connection across the LLM loop, so open and close around this read only.
+    with get_session_with_current_tenant() as db_session:
+        session_document_sets = get_chat_session_document_set_names(
+            db_session=db_session, chat_session_id=chat_session_id
+        )
+
+    if not session_document_sets:
+        return new_msg_req_filters
+
+    base = new_msg_req_filters or BaseFilters()
+    return base.model_copy(update={"document_set": session_document_sets})
 
 
 def _stream_chat_turn(

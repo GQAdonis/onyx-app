@@ -36,6 +36,8 @@ import {
 } from "@/lib/projects/svc";
 import { AppInputBarHandle } from "@/sections/input/AppInputBar";
 import { useSharedSearchFilters } from "@/lib/searchFilters/providers";
+import { useDocumentSets } from "@/lib/hooks/useDocumentSets";
+import type { ErrorResponseBody } from "@/lib/fetcher";
 
 // Runs currently being re-attached; module-level so effect re-runs (incl.
 // strict mode) can't start a second tail for the same run.
@@ -89,6 +91,9 @@ export default function useChatSessionController({
   onSubmit,
 }: UseChatSessionControllerProps) {
   const searchFilters = useSharedSearchFilters();
+  // Stored scope comes back as ids; the picker selects by name. This list is
+  // the id -> name mapping used when restoring a session's scope on load.
+  const { documentSets } = useDocumentSets();
   const [currentSessionFileTokenCount, setCurrentSessionFileTokenCount] =
     useState<number>(0);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
@@ -211,7 +216,7 @@ export default function useChatSessionController({
         setIsFetchingChatMessages(existingChatSessionId, false);
         let detail = "An unexpected error occurred.";
         try {
-          const errorBody = await response.json();
+          const errorBody: ErrorResponseBody = await response.json();
           detail = errorBody.detail || detail;
         } catch {
           // ignore parse errors
@@ -226,14 +231,30 @@ export default function useChatSessionController({
         return;
       }
 
-      const session = await response.json();
-      const chatSession = session as BackendChatSession;
+      const session: BackendChatSession = await response.json();
+      const chatSession = session;
       // Restore the incognito UI state on reload of a live incognito session.
       // The id must come back too, or a later upload would be sent with none
       // and land as an ordinary indexed file.
       const isIncognito = chatSession.incognito ?? false;
       setIncognitoEnabled(isIncognito);
       setIncognitoSessionId(isIncognito ? chatSession.chat_session_id : null);
+
+      // Restore the conversation's document-set scope on reload. The switch
+      // above clears the selection when moving between sessions, so without
+      // this a stored scope would be dropped every time the page loads and the
+      // next message would silently fall back to the assistant's own sets.
+      // Stored as ids, selected as names — convert through the fetched list.
+      const storedDocumentSetIds = chatSession.document_set_ids ?? [];
+      searchFilters.setSelectedDocumentSets(
+        storedDocumentSetIds.length === 0
+          ? []
+          : documentSets
+              .filter((documentSet) =>
+                storedDocumentSetIds.includes(documentSet.id)
+              )
+              .map((documentSet) => documentSet.name)
+      );
 
       // Ensure the current session is set to the actual session ID from the response
       setCurrentSession(chatSession.chat_session_id);
@@ -360,8 +381,8 @@ export default function useChatSessionController({
                 `/api/chat/get-chat-session/${sessionId}`
               );
               if (settledResponse.ok && stillCurrent()) {
-                const settled =
-                  (await settledResponse.json()) as BackendChatSession;
+                const settled: BackendChatSession =
+                  await settledResponse.json();
                 updateSessionAndMessageTree(
                   sessionId,
                   processRawChatHistory(settled.messages, settled.packets)

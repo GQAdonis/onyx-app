@@ -223,6 +223,7 @@ export interface OAuthTokenStatus {
 /** Which drill-down the actions popover is showing, if any. */
 export type SecondaryViewState =
   | { type: "sources" }
+  | { type: "documentSets" }
   | { type: "mcp"; serverId: number };
 
 /**
