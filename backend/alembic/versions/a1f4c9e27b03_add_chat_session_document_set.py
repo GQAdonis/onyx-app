@@ -1,7 +1,7 @@
 """Add chat_session__document_set for conversation-level document-set scope
 
 Revision ID: a1f4c9e27b03
-Revises: 287021f3b46c
+Revises: ad99acb9be41
 Create Date: 2026-09-14
 
 A conversation-level document-set scope, distinct from the persona's configured
@@ -15,7 +15,10 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "a1f4c9e27b03"
-down_revision = "287021f3b46c"
+# Chained after upstream's ad99acb9be41 rather than sharing its parent: both
+# originally descended from 287021f3b46c, which left the tree with two heads and
+# broke `alembic upgrade head` in the api-server startup command.
+down_revision = "ad99acb9be41"
 branch_labels = None
 depends_on = None
 
