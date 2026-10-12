@@ -40,7 +40,7 @@ def _build(
         persona_document_sets=persona_sets,
         persona_time_cutoff=None,
         db_session=None,
-        bypass_acl=True,
+        acl_filters=["user_email:test@example.com"],
     )
 
 

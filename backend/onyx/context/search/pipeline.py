@@ -99,7 +99,7 @@ def _build_index_filters(
         _scope_provenance = "none"
     logger.info(
         "document set scope: %s (provenance: %s)",
-        document_set_filter if document_set_filter else [],
+        document_set_filter or [],
         _scope_provenance,
     )
 
