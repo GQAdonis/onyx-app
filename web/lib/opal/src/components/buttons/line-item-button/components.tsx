@@ -14,13 +14,19 @@ import {
   type SizePreset,
   ContentAction,
 } from "@opal/layouts";
+import {
+  composeKeyHandler,
+  guardNestedInteractiveClick,
+  handleRowKeyDown,
+  handleRowKeyUp,
+} from "@opal/components/buttons/row-interaction";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 /**
- * The `ContentAction` props a row actually uses — ten of the twenty-two it
+ * The `ContentAction` props a row actually uses — twelve of the twenty-two it
  * offers. Listed rather than spread, so that everything a caller passes which
  * is *not* here is DOM, and reaches the row element.
  *
@@ -38,11 +44,23 @@ type RowContentProps = {
   /** Main label. */
   title: string | RichStr;
 
+  /**
+   * Cap the title at N lines and truncate the rest. Unset wraps without a
+   * limit, so a row showing a user-authored name usually wants `1`.
+   */
+  titleMaxLines?: number;
+
   /** Leading icon. */
   icon?: IconFunctionComponent;
 
   /** Secondary line under the title. */
   description?: string | RichStr;
+
+  /**
+   * Muted text beside the title, like "(Default)". Shown only by the
+   * `heading` variant with a `main-*` size preset.
+   */
+  suffix?: string;
 
   /**
    * Cap the description at N lines and truncate the rest. Unset wraps without
@@ -81,32 +99,50 @@ type RowContentProps = {
   padding?: 0 | 0.5 | 1 | 2;
 };
 
+/**
+ * `presentational` and `href` are mutually exclusive. An anchor is a native
+ * control — focusable, activated by Enter — which is exactly what the
+ * presentational mode promises the row will not be.
+ */
+type LineItemButtonModeProps =
+  | {
+      /**
+       * Render the row as plain markup inside another interactive primitive
+       * (e.g. Radix Select.Item, a selectable table row): no button role, no
+       * tab stop, no Enter/Space activation. The row keeps its interactive
+       * palette — drive it with `state` / `selectVariant` / `interaction`
+       * from the owning control. `role`, `tabIndex` and the key handlers
+       * still pass through, so the owner can substitute its own semantics.
+       */
+      presentational: true;
+      href?: never;
+      target?: never;
+    }
+  | ({ presentational?: false } & Pick<
+      InteractiveStatefulProps,
+      "href" | "target"
+    >);
+
 type LineItemButtonOwnProps = Pick<
   InteractiveStatefulProps,
-  | "state"
-  | "interaction"
-  | "onClick"
-  | "href"
-  | "target"
-  | "group"
-  | "ref"
-  | "disabled"
-> & {
-  /** Interactive select variant. @default "select-light" */
-  selectVariant?: "select-light" | "select-heavy";
+  "state" | "interaction" | "onClick" | "group" | "ref" | "disabled"
+> &
+  LineItemButtonModeProps & {
+    /** Interactive select variant. @default "select-light" */
+    selectVariant?: "select-light" | "select-heavy";
 
-  /** Corner rounding step (height is always content-driven). @default 3 */
-  rounding?: Rounding;
+    /** Corner rounding step (height is always content-driven). @default 3 */
+    rounding?: Rounding;
 
-  /** Container width. @default "full" */
-  width?: ExtremaSizeVariants;
+    /** Container width. @default "full" */
+    width?: ExtremaSizeVariants;
 
-  /** Tooltip text shown on hover. */
-  tooltip?: string;
+    /** Tooltip text shown on hover. */
+    tooltip?: string;
 
-  /** Which side the tooltip appears on. @default "top" */
-  tooltipSide?: TooltipSide;
-};
+    /** Which side the tooltip appears on. @default "top" */
+    tooltipSide?: TooltipSide;
+  };
 
 /**
  * `title` and `color` are omitted from the DOM attributes because the row
@@ -121,57 +157,6 @@ type LineItemButtonProps = LineItemButtonOwnProps &
 // ---------------------------------------------------------------------------
 // LineItemButton
 // ---------------------------------------------------------------------------
-
-// Mirrors native <button> activation (Enter fires on keydown, Space on keyup).
-// Guarded so keystrokes on nested interactive children (e.g. `rightChildren`
-// action buttons) don't also activate the row.
-function handleRowKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-  if (e.target !== e.currentTarget) return;
-  if (e.key === "Enter") {
-    e.preventDefault();
-    e.currentTarget.click();
-  } else if (e.key === " ") {
-    e.preventDefault();
-  }
-}
-
-function handleRowKeyUp(e: React.KeyboardEvent<HTMLDivElement>) {
-  if (e.target !== e.currentTarget) return;
-  if (e.key === " ") {
-    e.preventDefault();
-    e.currentTarget.click();
-  }
-}
-
-// The caller's handler runs first and can stop the row's own activation with
-// `preventDefault()` — the order a native control gives you. Composed rather
-// than replaced, because a row that accepts a handler and then overwrites it
-// is the same silent drop this component exists to avoid.
-function composeKeyHandler(
-  caller: React.KeyboardEventHandler<HTMLDivElement> | undefined,
-  row: React.KeyboardEventHandler<HTMLDivElement>
-): React.KeyboardEventHandler<HTMLDivElement> {
-  if (!caller) return row;
-  return (e) => {
-    caller(e);
-    if (!e.defaultPrevented) row(e);
-  };
-}
-
-// Ignore clicks originating from nested interactive children (e.g.
-// `rightChildren` action buttons) so they don't also activate the row.
-function guardNestedInteractiveClick(
-  onClick: React.MouseEventHandler<HTMLElement> | undefined
-): React.MouseEventHandler<HTMLElement> | undefined {
-  if (!onClick) return undefined;
-  return (e) => {
-    const nested = (e.target as HTMLElement).closest(
-      'button, a, [role="button"]'
-    );
-    if (nested && nested !== e.currentTarget) return;
-    onClick(e);
-  };
-}
 
 function LineItemButton({
   // Interactive surface
@@ -190,12 +175,15 @@ function LineItemButton({
   width = "full",
   tooltip,
   tooltipSide = "top",
+  presentational,
 
   // Content
   title,
+  titleMaxLines,
   icon,
   description,
   descriptionMaxLines,
+  suffix,
   rightChildren,
   sizePreset,
   variant,
@@ -235,15 +223,23 @@ function LineItemButton({
   // <button> so interactive `rightChildren` (e.g. action buttons) don't nest
   // a <button> inside a <button> — invalid HTML that breaks hydration. An
   // anchor row is already focusable and already activates on Enter, so it
-  // takes the caller's values unchanged.
-  const rowButtonProps = href
-    ? { role, tabIndex, onKeyDown, onKeyUp }
-    : {
-        role: role ?? "button",
-        tabIndex: tabIndex ?? 0,
-        onKeyDown: composeKeyHandler(onKeyDown, handleRowKeyDown),
-        onKeyUp: composeKeyHandler(onKeyUp, handleRowKeyUp),
-      };
+  // takes the caller's values unchanged. A presentational row makes no
+  // control of its own — the primitive that owns it already carries the
+  // semantics and the keyboard handling — so the caller's values pass
+  // through untouched there too.
+  const rowButtonProps: Pick<
+    React.HTMLAttributes<HTMLDivElement>,
+    "role" | "tabIndex" | "onKeyDown" | "onKeyUp"
+  > = presentational
+    ? { role: role ?? "presentation", tabIndex, onKeyDown, onKeyUp }
+    : href
+      ? { role, tabIndex, onKeyDown, onKeyUp }
+      : {
+          role: role ?? "button",
+          tabIndex: tabIndex ?? 0,
+          onKeyDown: composeKeyHandler(onKeyDown, handleRowKeyDown),
+          onKeyUp: composeKeyHandler(onKeyUp, handleRowKeyUp),
+        };
 
   const item = (
     <Interactive.Stateful
@@ -268,9 +264,11 @@ function LineItemButton({
           <ContentAction
             {...({
               title,
+              titleMaxLines,
               icon,
               description,
               descriptionMaxLines,
+              suffix,
               rightChildren,
               sizePreset,
               variant,

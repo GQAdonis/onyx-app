@@ -1,3 +1,5 @@
+import { downloadFile } from "@/lib/download";
+import { FetchError } from "@/lib/fetcher";
 import {
   ApiSessionResponse,
   ApiDetailedSessionResponse,
@@ -14,6 +16,7 @@ import {
   DirectoryListing,
   SharingScope,
   ApiSessionSkillsState,
+  type OutputInventory,
 } from "@/app/craft/types/streamingTypes";
 import {
   ApprovalListResponse,
@@ -25,6 +28,7 @@ import {
   RateLimitDetails,
 } from "@/app/app/interfaces";
 import { BUILD_API_BASE } from "@/app/craft/v1/constants";
+import type { ErrorResponseBody } from "@/lib/fetcher";
 import { CRAFT_GATEWAY_PROVIDER } from "@/app/craft/onboarding/constants";
 import type { BuildLlmSelection } from "@/app/craft/onboarding/constants";
 
@@ -59,7 +63,7 @@ export async function processSSEStream(
         const dataStr = line.slice(line.indexOf(":") + 1).trim();
         if (dataStr) {
           try {
-            const data = JSON.parse(dataStr);
+            const data: StreamPacket = JSON.parse(dataStr);
             // The backend sends `event: message` for all events and puts the
             // actual type in data.type. Only use SSE event type as fallback
             // if data.type is not present and SSE event is not "message".
@@ -95,7 +99,7 @@ export interface CreateSessionOptions {
 // falling back to the status code when the body isn't the expected shape.
 async function errorDetail(res: Response, fallback: string): Promise<string> {
   try {
-    const body = await res.json();
+    const body: ErrorResponseBody | null = await res.json();
     if (typeof body?.detail === "string" && body.detail.trim()) {
       return body.detail;
     }
@@ -103,6 +107,16 @@ async function errorDetail(res: Response, fallback: string): Promise<string> {
     // body wasn't JSON — fall through
   }
   return `${fallback}: ${res.status}`;
+}
+
+// Mirrors backend `SessionListResponse`.
+interface ApiSessionListResponse {
+  sessions: ApiSessionResponse[];
+}
+
+// Mirrors backend `SessionNameGenerateResponse`.
+interface ApiSessionNameGenerateResponse {
+  name: string;
 }
 
 export async function createSession(
@@ -177,7 +191,7 @@ export async function fetchSessionHistory(): Promise<SessionHistoryItem[]> {
     throw new Error(`Failed to fetch session history: ${res.status}`);
   }
 
-  const data = await res.json();
+  const data: ApiSessionListResponse = await res.json();
   return data.sessions.map((s: ApiSessionResponse) => ({
     id: s.id,
     title: s.name || `Session ${s.id.slice(0, 8)}...`,
@@ -198,7 +212,7 @@ export async function generateSessionName(sessionId: string): Promise<string> {
     throw new Error(`Failed to generate session name: ${res.status}`);
   }
 
-  const data = await res.json();
+  const data: ApiSessionNameGenerateResponse = await res.json();
   return data.name;
 }
 
@@ -274,7 +288,7 @@ export async function restoreSession(
       continue;
     }
 
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to restore session: ${res.status}`
     );
@@ -329,6 +343,8 @@ function extractAttachmentsFromMetadata(
 ): BuildMessageAttachment[] {
   if (!Array.isArray(metadata?.attachments)) return [];
 
+  // Element of an unvalidated attachments array; the body below decodes it.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   return metadata.attachments.flatMap((attachment: unknown) => {
     if (
       typeof attachment !== "object" ||
@@ -353,6 +369,11 @@ function extractAttachmentsFromMetadata(
   });
 }
 
+// Mirrors backend `MessageListResponse`.
+interface ApiMessageListResponse {
+  messages: ApiMessageResponse[];
+}
+
 export async function fetchMessages(
   sessionId: string
 ): Promise<BuildMessage[]> {
@@ -362,7 +383,7 @@ export async function fetchMessages(
     throw new Error(`Failed to fetch messages: ${res.status}`);
   }
 
-  const data = await res.json();
+  const data: ApiMessageListResponse = await res.json();
   return data.messages.map((m: ApiMessageResponse) => ({
     id: m.id,
     type: m.type,
@@ -420,13 +441,9 @@ export async function createTurn(
           path: attachment.path,
           mime_type: attachment.mimeType,
         })),
-        ...(model
-          ? {
-              provider: CRAFT_GATEWAY_PROVIDER,
-              provider_id: model.providerId,
-              model: model.modelName,
-            }
-          : {}),
+        provider: model ? CRAFT_GATEWAY_PROVIDER : undefined,
+        provider_id: model?.providerId,
+        model: model?.modelName,
       }),
       signal,
     }
@@ -466,7 +483,7 @@ export async function fetchActiveTurn(
     throw new Error(`Failed to fetch active turn: ${res.status}`);
   }
 
-  return (await res.json()) as ApiInteractiveTurnResponse | null;
+  return await res.json();
 }
 
 export async function fetchTurnEventStream(
@@ -534,7 +551,7 @@ export async function fetchArtifacts(sessionId: string): Promise<Artifact[]> {
     throw new Error(`Failed to fetch artifacts: ${res.status}`);
   }
 
-  const data = await res.json();
+  const data: ApiArtifactResponse[] = await res.json();
   // Backend returns a direct array, not wrapped in an object
   return data.map((a: ApiArtifactResponse) => ({
     id: a.id,
@@ -553,10 +570,12 @@ export async function fetchArtifacts(sessionId: string): Promise<Artifact[]> {
 // =============================================================================
 
 export async function fetchWebappInfo(
-  sessionId: string
+  sessionId: string,
+  signal?: AbortSignal
 ): Promise<ApiWebappInfoResponse> {
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/webapp-info`
+    `${BUILD_API_BASE}/sessions/${sessionId}/webapp-info`,
+    { signal }
   );
 
   if (!res.ok) {
@@ -570,9 +589,23 @@ export async function fetchWebappInfo(
 // Files API
 // =============================================================================
 
+export async function fetchOutputInventory(
+  sessionId: string,
+  signal?: AbortSignal
+): Promise<OutputInventory> {
+  const response = await fetch(
+    `${BUILD_API_BASE}/sessions/${sessionId}/outputs`,
+    { signal }
+  );
+  if (!response.ok)
+    throw new Error(`Failed to fetch output inventory: ${response.status}`);
+  return response.json();
+}
+
 export async function fetchDirectoryListing(
   sessionId: string,
-  path: string = ""
+  path: string = "",
+  signal?: AbortSignal
 ): Promise<DirectoryListing> {
   const url = new URL(
     `${BUILD_API_BASE}/sessions/${sessionId}/files`,
@@ -582,13 +615,27 @@ export async function fetchDirectoryListing(
     url.searchParams.set("path", path);
   }
 
-  const res = await fetch(url.toString());
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch directory listing: ${res.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () =>
+      controller.abort(
+        new DOMException("Directory listing timed out", "TimeoutError")
+      ),
+    10_000
+  );
+  try {
+    const res = await fetch(url.toString(), {
+      signal: signal
+        ? AbortSignal.any([signal, controller.signal])
+        : controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch directory listing: ${res.status}`);
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json();
 }
 
 /**
@@ -603,12 +650,9 @@ export function buildArtifactUrl(sessionId: string, path: string): string {
 }
 
 export function downloadArtifactFile(sessionId: string, path: string): void {
-  const link = document.createElement("a");
-  link.href = buildArtifactUrl(sessionId, path);
-  link.download = path.split("/").pop() || path;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadFile(path.split("/").pop() || path, {
+    url: buildArtifactUrl(sessionId, path),
+  });
 }
 
 /**
@@ -619,12 +663,9 @@ export function downloadDirectory(sessionId: string, path: string): void {
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
-  const link = document.createElement("a");
-  link.href = `${BUILD_API_BASE}/sessions/${sessionId}/download-directory/${encodedPath}`;
-  link.download = "";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadFile("", {
+    url: `${BUILD_API_BASE}/sessions/${sessionId}/download-directory/${encodedPath}`,
+  });
 }
 
 export interface FileContentResponse {
@@ -645,10 +686,16 @@ export async function fetchFileContent(
   sessionId: string,
   path: string
 ): Promise<FileContentResponse> {
-  const res = await fetch(buildArtifactUrl(sessionId, path));
+  const res = await fetch(buildArtifactUrl(sessionId, path), {
+    cache: "no-store",
+  });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch file content: ${res.status}`);
+    throw new FetchError(
+      `Failed to fetch file content: ${res.status}`,
+      res.status,
+      null
+    );
   }
 
   const mimeType = res.headers.get("Content-Type") || "text/plain";
@@ -722,7 +769,7 @@ export async function uploadFile(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to upload file: ${res.status}`);
   }
 
@@ -750,7 +797,7 @@ export async function deleteFile(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to delete file: ${res.status}`);
   }
 }
@@ -773,7 +820,7 @@ export async function exportDocx(
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to export as DOCX: ${res.status}`
     );
@@ -806,13 +853,16 @@ export async function fetchPptxPreview(
     .join("/");
 
   const res = await fetch(
-    `${BUILD_API_BASE}/sessions/${sessionId}/pptx-preview/${encodedPath}`
+    `${BUILD_API_BASE}/sessions/${sessionId}/pptx-preview/${encodedPath}`,
+    { cache: "no-store" }
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(
-      errorData.detail || `Failed to generate PPTX preview: ${res.status}`
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
+    throw new FetchError(
+      errorData.detail || `Failed to generate PPTX preview: ${res.status}`,
+      res.status,
+      errorData
     );
   }
 
@@ -863,11 +913,11 @@ export async function postApprovalDecision(
   );
 
   if (res.status === 409) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    const body: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new ApprovalConflictError(body.detail ?? "decision conflict");
   }
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to post approval decision: ${res.status}`
     );
@@ -886,11 +936,11 @@ export async function postApprovalSessionGrant(
   );
 
   if (res.status === 409) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    const body: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new ApprovalConflictError(body.detail ?? "decision conflict");
   }
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to approve for session: ${res.status}`
     );
@@ -942,7 +992,7 @@ export async function uploadLibraryFiles(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to upload files: ${res.status}`
     );
@@ -968,7 +1018,7 @@ export async function uploadLibraryZip(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to upload zip: ${res.status}`);
   }
 
@@ -988,7 +1038,7 @@ export async function createLibraryDirectory(
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(
       errorData.detail || `Failed to create directory: ${res.status}`
     );
@@ -1009,7 +1059,7 @@ export async function deleteLibraryFile(documentId: string): Promise<void> {
   );
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData: ErrorResponseBody = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to delete file: ${res.status}`);
   }
 }

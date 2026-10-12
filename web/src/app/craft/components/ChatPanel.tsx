@@ -37,7 +37,7 @@ import CraftInputBar, {
   CraftInputBarHandle,
 } from "@/app/craft/components/CraftInputBar";
 import ModelPickerButton from "@/app/craft/components/ModelPickerButton";
-import { useLLMProviders } from "@/lib/languageModels/hooks";
+import { useLanguageModels } from "@/lib/languageModels/hooks";
 import {
   BuildLlmSelection,
   hasSupportedCraftProvider,
@@ -56,13 +56,17 @@ import SubagentView from "@/app/craft/components/SubagentView";
 import SandboxStatusIndicator from "@/app/craft/components/SandboxStatusIndicator";
 import SandboxAsleepNotice from "@/app/craft/components/SandboxAsleepNotice";
 import SkillsStaleNotice from "@/app/craft/components/SkillsStaleNotice";
-import IconButton from "@/refresh-components/buttons/IconButton";
 import { SvgSidebar, SvgChevronDown, SvgStopCircle } from "@opal/icons";
-import { Button as OpalButton, Tooltip } from "@opal/components";
+import { Button, Tooltip } from "@opal/components";
 import { useBuildContext } from "@/app/craft/contexts/BuildContext";
 import useScreenSize from "@/hooks/useScreenSize";
 import { cn } from "@opal/utils";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import {
+  motion,
+  AnimatePresence,
+  LayoutGroup,
+  useReducedMotion,
+} from "motion/react";
 
 interface BuildChatPanelProps {
   /** Session ID from URL - used to prevent welcome flash while loading */
@@ -120,7 +124,7 @@ export default function BuildChatPanel({
   const toggleOutputPanel = useToggleOutputPanel();
   const onWakeIntent = useWakeOnIntent();
 
-  const { llmProviders, defaultText, defaultCraft } = useLLMProviders();
+  const { llmProviders, defaultText, defaultCraft } = useLanguageModels();
   // Sessions can outlive the org's supported providers — gate sends until one
   // exists (the model picker stays enabled so admins can connect from it).
   const hasProvider = hasSupportedCraftProvider(llmProviders);
@@ -251,20 +255,20 @@ export default function BuildChatPanel({
     setActiveSession(activeSession);
   }, [existingSessionId, preProvisionedSessionId, setActiveSession]);
 
-  const maybeAutoOpenPanelForPreview = useBuildSessionStore(
-    (s) => s.maybeAutoOpenPanelForPreview
+  const maybeAutoOpenWebapp = useBuildSessionStore(
+    (s) => s.maybeAutoOpenWebapp
   );
 
-  // Auto-open the panel the first time webappUrl becomes non-null this session.
+  // A URL starts readiness checks; only a serving webapp can open Preview.
   const prevWebappUrlRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const prev = prevWebappUrlRef.current;
     const current = session?.webappUrl ?? null;
     if (prev === null && current !== null && sessionId) {
-      maybeAutoOpenPanelForPreview(sessionId);
+      void maybeAutoOpenWebapp(sessionId);
     }
     prevWebappUrlRef.current = current;
-  }, [session?.webappUrl, sessionId, maybeAutoOpenPanelForPreview]);
+  }, [session?.webappUrl, sessionId, maybeAutoOpenWebapp]);
 
   useEffect(() => {
     if (!scheduledSessionId || !shouldStreamScheduledRun) return;
@@ -652,12 +656,14 @@ export default function BuildChatPanel({
   ]);
 
   return (
-    <div className="h-full w-full">
+    <LayoutGroup id="craft-chat">
       {/* Content wrapper - shrinks when output panel opens. Wrapped in a
           dropzone so files can be dropped anywhere in the chat area. */}
+      {/* noPaste: the input bar already uploads pasted files itself. */}
       <Dropzone
         noClick
         noKeyboard
+        noPaste
         onDrop={(accepted) => {
           if (accepted.length > 0) uploadFiles(accepted);
         }}
@@ -675,7 +681,7 @@ export default function BuildChatPanel({
               <div className="flex min-w-0 flex-row items-center gap-2 max-w-[75%]">
                 {/* Mobile sidebar toggle - only show on mobile when sidebar is folded */}
                 {isMobile && leftSidebarFolded && (
-                  <OpalButton
+                  <Button
                     icon={SvgSidebar}
                     aria-label={t("openSidebar.ariaLabel")}
                     onClick={() => setLeftSidebarFolded(false)}
@@ -696,8 +702,7 @@ export default function BuildChatPanel({
                 <SandboxStatusIndicator />
                 <SandboxAsleepNotice />
                 {/* Output panel toggle — same icon for open and close */}
-                {/* TODO(@raunakab): migrate to opal Button once className/iconClassName is resolved */}
-                <IconButton
+                <Button
                   icon={SvgSidebar}
                   onClick={toggleOutputPanel}
                   tooltip={
@@ -705,14 +710,8 @@ export default function BuildChatPanel({
                       ? t("outputPanel.closeTooltip")
                       : t("outputPanel.openTooltip")
                   }
-                  tertiary
-                  className={cn(
-                    "border rounded-full p-2.5!",
-                    outputPanelOpen
-                      ? "bg-background-tint-02!"
-                      : "bg-background-tint-00!"
-                  )}
-                  iconClassName="stroke-text-04! h-5! w-5!"
+                  prominence="tertiary"
+                  interaction={outputPanelOpen ? "hover" : undefined}
                 />
               </div>
               {/* Soft fade border at bottom */}
@@ -840,37 +839,47 @@ export default function BuildChatPanel({
                   )}
                   {/* The composer stays in view for subagents (layout consistency)
                   but is disabled — replying to subagents is not supported. */}
-                  <CraftInputBar
-                    ref={inputBarRef}
-                    onSubmit={handleSubmit}
-                    isRunning={displayIsRunning}
-                    isInterrupting={isInterrupting}
-                    onInterrupt={
-                      hasInterruptibleTurn && !scheduledRunInFlight
-                        ? handleInterrupt
-                        : undefined
-                    }
-                    disabled={
-                      isViewingSubagent || scheduledRunInFlight || !hasProvider
-                    }
-                    placeholder={
-                      isViewingSubagent
-                        ? t("input.subagentPlaceholder")
-                        : scheduledRunInFlight
-                          ? t("input.scheduledRunPlaceholder")
-                          : t("input.continuePlaceholder")
-                    }
-                    queuedMessages={queuedMessages}
-                    onQueueMessage={handleQueueMessage}
-                    onRemoveQueuedMessage={handleRemoveQueuedMessage}
-                    contextUsage={contextUsage}
-                  />
+                  <motion.div
+                    layoutId="craft-composer"
+                    transition={{
+                      duration: reduceMotion ? 0 : 0.25,
+                      ease: "easeOut",
+                    }}
+                  >
+                    <CraftInputBar
+                      ref={inputBarRef}
+                      onSubmit={handleSubmit}
+                      isRunning={displayIsRunning}
+                      isInterrupting={isInterrupting}
+                      onInterrupt={
+                        hasInterruptibleTurn && !scheduledRunInFlight
+                          ? handleInterrupt
+                          : undefined
+                      }
+                      disabled={
+                        isViewingSubagent ||
+                        scheduledRunInFlight ||
+                        !hasProvider
+                      }
+                      placeholder={
+                        isViewingSubagent
+                          ? t("input.subagentPlaceholder")
+                          : scheduledRunInFlight
+                            ? t("input.scheduledRunPlaceholder")
+                            : t("input.continuePlaceholder")
+                      }
+                      queuedMessages={queuedMessages}
+                      onQueueMessage={handleQueueMessage}
+                      onRemoveQueuedMessage={handleRemoveQueuedMessage}
+                      contextUsage={contextUsage}
+                    />
+                  </motion.div>
                 </div>
               </div>
             )}
           </div>
         )}
       </Dropzone>
-    </div>
+    </LayoutGroup>
   );
 }

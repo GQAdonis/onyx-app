@@ -63,11 +63,33 @@ Never import from `web/src/components/`. It is legacy and being deleted. The one
 - `web/src/i18n/messages/en.json` is the source of truth. When you add or change a key, add your
   best translation to every other locale file in that directory. Missing or extra keys fail
   `types:check`. ICU shape must match across locales (`src/i18n/__tests__/catalog.test.ts`).
+- The `i18n-copy-changes` pre-commit hook requires each changed English message to have a changed translation in every locale.
+  It uses the pre-commit range base when supplied. Otherwise, it checks working edits against HEAD or clean checkouts against HEAD^.
+  Main push checks use the push event’s previous commit. The hook does not assess translation quality.
+  Run `python3 tools/i18n/check_copy_changes.py --base origin/main` from the repository root to check a branch.
 - Keys are stable identifiers: `<namespace>.<section>.<element>.<role>` in camelCase, for example
   `settings.appearance.colorMode.title`. Rewording the English never changes the key.
 - Use ICU for arguments and plurals. Never concatenate translated fragments.
 - Dates and numbers: `useFormatter` and `useLocale`, not hard-coded `"en-US"`.
 - New styles use logical properties (`ms-`, `pe-`, `start-`) instead of `ml-`, `pr-`, `left-`.
+
+### Opal i18n
+
+Opal has no next-intl. A label an Opal component renders itself (a built-in placeholder, empty
+state, aria-label — anything not passed in by the caller) rides the `OpalStrings` contract:
+
+1. Add a typed key to `OpalStrings` in `web/lib/opal/src/strings.tsx`, with an English default in
+   `defaultOpalStrings` right below. Prefix component-scoped keys with the component name
+   (`comboBoxNoOptions`, `keyValueDuplicateKey`). A string with arguments is a function-valued
+   entry (`(count) => string`).
+2. Read it in the component with `useOpalStrings()` from `@opal/strings`.
+3. Map it in `web/src/i18n/OpalStringsBridge.tsx` from the `opal.*` catalog namespace
+   (`t("comboBox.noOptions")`) — the bridge wraps the app in `layout.tsx` and feeds Opal the
+   host translations.
+4. Add the key under `opal.<component>.<name>` in `en.json` and every other locale file.
+
+Never hard-code a user-facing string inside an Opal component, and never import next-intl there —
+the contract keeps Opal host-agnostic while the app supplies real translations.
 
 ## Tests
 
@@ -76,3 +98,9 @@ Never import from `web/src/components/`. It is legacy and being deleted. The one
   priority).
 - Run an e2e test with `cd web && bun run playwright <TEST_NAME>`. Do not use `bunx` or `npx`;
   they can fetch an unpinned Playwright.
+- `ods type-coverage typescript --check` type-checks `web/` and gates type coverage (the share of
+  identifiers whose type is not `any`, tests excluded). Each `as T` or `<T>x` cast and each `x!`
+  non-null assertion also counts as uncovered, except `as const` and `as unknown`. Coverage must
+  not drop below the floors in `web/.type-coverage-baseline.yaml`. The `typescript-check`
+  pre-commit hook runs it. After you remove `any` types, casts or non-null assertions, raise the
+  floors with `ods type-coverage typescript --update`.
