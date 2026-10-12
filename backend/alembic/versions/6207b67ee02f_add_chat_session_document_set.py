@@ -21,6 +21,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Deployments that ran this migration under its pre-v4.9.0 id (a1f4c9e27b03)
+    # already have the table. They are stamped back to ad99acb9be41 so the
+    # upstream migrations run, and this then keeps the existing scope rows.
+    if "chat_session__document_set" in sa.inspect(op.get_bind()).get_table_names():
+        return
+
     op.create_table(
         "chat_session__document_set",
         sa.Column(
