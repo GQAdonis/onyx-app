@@ -27,6 +27,7 @@ import {
 } from "@/lib/tools/hooks";
 import { ToolsPopoverProvider } from "@/lib/tools/providers";
 import { MCPLineItem, type MCPServer } from "@/lib/mcp/components";
+import DocumentSetsView from "@/lib/tools/components/DocumentSetsView";
 import SourcesView from "@/lib/tools/components/SourcesView";
 import SwitchList, { SwitchListItem } from "@/lib/tools/components/SwitchList";
 import ToolLineItem from "@/lib/tools/components/ToolLineItem";
@@ -119,6 +120,10 @@ export default function ToolsPopover({
   const close = useCallback(() => setOpen(false), []);
   const openSources = useCallback(
     () => setSecondaryView({ type: "sources" }),
+    []
+  );
+  const openDocumentSets = useCallback(
+    () => setSecondaryView({ type: "documentSets" }),
     []
   );
 
@@ -506,6 +511,7 @@ export default function ToolsPopover({
       agent={agent}
       toolConfiguration={toolConfiguration}
       openSources={openSources}
+      openDocumentSets={openDocumentSets}
       close={close}
     >
       <Popover open={open} onOpenChange={handleOpenChange}>
@@ -525,6 +531,8 @@ export default function ToolsPopover({
             {secondaryView ? (
               secondaryView.type === "mcp" ? (
                 mcpView
+              ) : secondaryView.type === "documentSets" ? (
+                <DocumentSetsView onBack={() => setSecondaryView(null)} />
               ) : (
                 <SourcesView onBack={() => setSecondaryView(null)} />
               )

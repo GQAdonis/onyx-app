@@ -84,6 +84,9 @@
       },
       "selectSearchSources": {
         "label": "Select Search Sources"
+      },
+      "selectDocumentSets": {
+        "label": "Choose knowledge to search"
       }
     },
     "addMcpModal": {

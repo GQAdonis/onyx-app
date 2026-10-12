@@ -1,0 +1,170 @@
+# Right-sized overlay, layered ON TOP of values-prometheus-aks.yaml.
+#
+# CAPACITY CONTEXT (measured 2026-09-08)
+#   - agentpool x2 are tainted CriticalAddonsOnly:NoSchedule -> unusable.
+#   - The Azure subscription is AT its vCPU quota (standardDSv5Family,
+#     centralus, limit 16 / usage 16). The autoscaler CANNOT add nodes
+#     (HTTP 409 OperationNotAllowed), so no new node pools until Microsoft
+#     raises the quota.
+#   - Removing dify frees 4.70 CPU / 9.4Gi, giving ~5.82 CPU / 34.3Gi free.
+#
+# The chart's defaults (11.3 CPU / 40.7Gi) still do NOT fit. These values run
+# every component with headroom inside the post-dify budget. Memory is
+# plentiful; CPU is the binding constraint, so requests sit near real idle draw
+# while limits stay generous to absorb bursts.
+
+# --- Postgres: single instance ------------------------------------------------
+# HA (3 instances) costs 3x CPU and 300Gi of premium disk, which the CPU budget
+# will not support. Trade-off: a node drain restarts the DB and Onyx errors
+# briefly. Restore instances: 3 once the vCPU quota is raised.
+postgresql:
+  cluster:
+    instances: 1
+    storage:
+      storageClass: managed-csi-premium
+      # CNPG refuses to shrink existing storage and the disk is already
+      # provisioned at 100Gi. Size was never the constraint; CPU is.
+      size: 100Gi
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+# --- OpenSearch ---------------------------------------------------------------
+# nodeSelector MUST be null: the base file pins agentpool, whose nodes are
+# tainted, which made this pod permanently unschedulable.
+opensearch:
+  nodeSelector: null
+  resources:
+    requests:
+      cpu: 750m
+      memory: 4Gi
+    limits:
+      cpu: 3000m
+      memory: 6Gi
+  persistence:
+    # A StatefulSet volumeClaimTemplate is immutable; matches the existing claim.
+    size: 64Gi
+    storageClass: managed-csi-premium
+  # Heap ~50% of the memory limit.
+  opensearchJavaOpts: "-Xmx3g -Xms3g"
+
+# --- MinIO --------------------------------------------------------------------
+# The subchart requests 16Gi by default, which alone exceeded the old budget.
+minio:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+
+# --- Code interpreter ---------------------------------------------------------
+# Re-enabled: the reclaimed capacity covers it.
+codeInterpreter:
+  enabled: true
+
+# --- Model servers ------------------------------------------------------------
+inferenceCapability:
+  resources:
+    requests:
+      cpu: 400m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+indexCapability:
+  resources:
+    requests:
+      cpu: 300m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+# --- Application tier ---------------------------------------------------------
+api:
+  resources:
+    requests:
+      cpu: 400m
+      memory: 1536Mi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+webserver:
+  resources:
+    requests:
+      cpu: 150m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1536Mi
+
+mcpServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+# --- Celery workers -----------------------------------------------------------
+# All at replicaCount 1, including the indexing path, which the earlier
+# CPU-starved revision had scaled to zero.
+celery_beat:
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+celery_worker_primary:
+  resources:
+    requests: {cpu: 200m, memory: 768Mi}
+    limits:   {cpu: 1500m, memory: 2Gi}
+
+celery_worker_light:
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits:   {cpu: 1000m, memory: 1Gi}
+
+celery_worker_heavy:
+  resources:
+    requests: {cpu: 150m, memory: 768Mi}
+    limits:   {cpu: 1500m, memory: 2Gi}
+
+celery_worker_monitoring:
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+celery_worker_docfetching:
+  replicaCount: 1
+  resources:
+    requests: {cpu: 200m, memory: 768Mi}
+    limits:   {cpu: 1500m, memory: 2Gi}
+
+celery_worker_docprocessing:
+  replicaCount: 1
+  resources:
+    requests: {cpu: 200m, memory: 1Gi}
+    limits:   {cpu: 2000m, memory: 3Gi}
+
+celery_worker_user_file_processing:
+  replicaCount: 1
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits:   {cpu: 1000m, memory: 2Gi}
+
+# --- Redis operator -----------------------------------------------------------
+# The subchart requests 500m/500Mi for a low-traffic controller.
+redis-operator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi

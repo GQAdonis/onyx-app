@@ -84,6 +84,9 @@
       },
       "selectSearchSources": {
         "label": "选择搜索来源"
+      },
+      "selectDocumentSets": {
+        "label": "选择要搜索的知识"
       }
     },
     "addMcpModal": {

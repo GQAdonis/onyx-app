@@ -1,0 +1,135 @@
+# Envoy Gateway exposure for Onyx at https://onyx.prometheusags.ai
+#
+# The Onyx Helm chart ships no Gateway API templates — only nginx-specific
+# Ingress objects — so these resources are authored and applied separately.
+#
+# SHARED GATEWAY: Onyx does NOT own a Gateway. The platform has too few
+# available IP addresses to give each app its own LoadBalancer, so every app
+# attaches to the single shared `argocd-gateway` in the `argocd` namespace,
+# which owns the one LB address. Onyx uses its two dedicated listener
+# sections there: `onyx-http` (:80) and `onyx-https` (:443). TLS for those
+# listeners is the *.prometheusags.ai Secret held in the `argocd` namespace.
+#
+# Consequence of sharing: a ClientTrafficPolicy must live in the same
+# namespace as the Gateway it targets, so Onyx cannot apply listener-level
+# client config from here. See the note at the bottom of this file.
+---
+# Force every plaintext request to HTTPS.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: onyx-https-redirect
+  namespace: onyx
+spec:
+  parentRefs:
+    - name: argocd-gateway
+      namespace: argocd
+      sectionName: onyx-http
+  hostnames:
+    - onyx.prometheusags.ai
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+# /api/* -> api-service, with the /api prefix stripped.
+# This replaces the chart's nginx `rewrite-target: /$2` annotation. The rule is
+# listed before the catch-all because Gateway API matches the most specific
+# path prefix first.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: onyx-api
+  namespace: onyx
+spec:
+  parentRefs:
+    - name: argocd-gateway
+      namespace: argocd
+      sectionName: onyx-https
+  hostnames:
+    - onyx.prometheusags.ai
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: onyx-api-service
+          port: 8080
+---
+# Everything else -> the Next.js web server.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: onyx-web
+  namespace: onyx
+spec:
+  parentRefs:
+    - name: argocd-gateway
+      namespace: argocd
+      sectionName: onyx-https
+  hostnames:
+    - onyx.prometheusags.ai
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: onyx-webserver
+          port: 3000
+---
+# Long timeouts for slow LLM streaming responses.
+#
+# WHY THIS IS REQUIRED: Envoy's default route request timeout is 15s. That is a
+# hard cap on total response duration — it is NOT an idle timeout, so Onyx's
+# SSE keepalive (CHAT_HEARTBEAT_INTERVAL_S, default 15s) cannot prevent it.
+# An agentic search turn routinely runs minutes; without this policy Envoy
+# resets the HTTP/2 stream at exactly 15s and the browser reports
+# ERR_HTTP2_PROTOCOL_ERROR mid-answer, with `UT`/`response_timeout` in the
+# Envoy access log while the backend keeps generating.
+#
+# This targets the HTTPRoute (not the Gateway), so it is unaffected by the
+# shared-gateway arrangement and stays local to the `onyx` namespace.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: onyx-backend-traffic
+  namespace: onyx
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: onyx-api
+  timeout:
+    http:
+      requestTimeout: 600s
+      # Safety net: reclaim genuinely dead streams. Must stay comfortably above
+      # CHAT_HEARTBEAT_INTERVAL_S so a live-but-silent stream is never cut.
+      streamIdleTimeout: 300s
+---
+# NOT APPLIED — large request bodies (uploads)
+#
+# The chart's nginx `proxy-body-size: 5G` annotation has no equivalent here.
+# Restoring it needs a ClientTrafficPolicy with `connection.bufferLimit`, but
+# Envoy Gateway requires that policy to reside in the SAME namespace as the
+# Gateway it targets. The Gateway now lives in `argocd`, so this cannot be
+# applied from the `onyx` namespace.
+#
+# To restore it, someone with write access to `argocd` must apply a
+# ClientTrafficPolicy there targeting the shared Gateway with
+# `sectionName: onyx-https`. Scoping by sectionName is mandatory: a
+# Gateway-wide policy would land on every other team's listener, and Envoy
+# rejects a policy applied to multiple non-HTTPS listeners on the same port.
+#
+# Note bufferLimit is a uint32 of bytes, so its ceiling is 4294967295 (~4Gi);
+# 5Gi is rejected, and an invalid ClientTrafficPolicy makes Envoy serve a
+# synthetic 500 on every attached route instead of failing open.
